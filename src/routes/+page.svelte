@@ -4,6 +4,7 @@
 	import { goto } from '$app/navigation';
 	import { portal, readSource, SCREEN_ORDER, type Screen } from '#lib/portal/state.svelte.js';
 	import { getInventory } from '#lib/api/intake.js';
+	import { INTAKE_API, IMAGE_CDN } from '#lib/config.js';
 	import { loadTurnstile } from '#lib/portal/turnstile.js';
 	import { SITE } from '#lib/config.js';
 	import Wordmark from '#lib/components/Wordmark.svelte';
@@ -27,6 +28,14 @@
 		address: { '@type': 'PostalAddress', addressLocality: 'Beverly Hills', addressRegion: 'CA' },
 		potentialAction: { '@type': 'Action', name: 'Sell my car', target: SITE.portal }
 	});
+
+	// Runs from the prerendered head, before the app's JS has downloaded, so the
+	// inventory round trip overlaps the script load instead of following it.
+	// getInventory() in api/intake.ts picks the promise up on mount.
+	const earlyInventory =
+		'window.__inv=fetch(' +
+		JSON.stringify(INTAKE_API + '/inventory') +
+		').then(function(r){return r.json()}).catch(function(){return null})';
 
 	let screen = $state<Screen>('choice');
 	let dir = $state<'fwd' | 'bwd' | ''>('');
@@ -79,6 +88,9 @@
 	<meta name="description" content={DESC} />
 	<meta name="robots" content="index, follow" />
 	<link rel="canonical" href={SITE.portal} />
+	<link rel="preconnect" href={IMAGE_CDN} />
+	<link rel="preconnect" href="https://challenges.cloudflare.com" />
+	{@html '<script>' + earlyInventory + '<' + '/script>'}
 	<meta property="og:type" content="website" />
 	<meta property="og:site_name" content={SITE.name} />
 	<meta property="og:title" content={TITLE} />

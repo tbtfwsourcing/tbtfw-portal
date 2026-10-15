@@ -40,29 +40,42 @@
 		await applyStage(st);
 	}
 
+	// The chip flips at once; the backend round trip (about half a second)
+	// confirms it, and a failure puts the old stage back.
 	async function applyStage(st: string) {
+		const prev = lead.status;
+		lead.status = st;
 		try {
 			const r = await api.setStatus(crm.key, lead.id, st);
-			if (r.json?.ok) {
-				lead.status = st;
-				toast.success('Stage set to ' + st + '.');
-			} else toast.error(r.json?.message ?? 'Failed.');
+			if (r.json?.ok) toast.success('Stage set to ' + st + '.');
+			else {
+				lead.status = prev;
+				toast.error(r.json?.message ?? 'Failed.');
+			}
 		} catch {
+			lead.status = prev;
 			toast.error('No response from the backend.');
 		}
 	}
 
+	// Same idea: apply locally, write notes and owner in parallel, roll back on failure.
 	async function save() {
+		const prev = { notes: lead.notes, assigned_to: lead.assigned_to };
+		lead.notes = notes;
+		lead.assigned_to = owner;
 		working = true;
 		try {
-			await api.saveNotes(crm.key, lead.id, notes);
-			const r = await api.saveOwner(crm.key, lead.id, owner);
-			if (r.json?.ok) {
-				lead.notes = notes;
-				lead.assigned_to = owner;
-				toast.success('Saved.');
-			} else toast.error(r.json?.message ?? 'Failed.');
+			const [n, o] = await Promise.all([
+				api.saveNotes(crm.key, lead.id, notes),
+				api.saveOwner(crm.key, lead.id, owner)
+			]);
+			if (n.json?.ok && o.json?.ok) toast.success('Saved.');
+			else {
+				Object.assign(lead, prev);
+				toast.error(n.json?.message ?? o.json?.message ?? 'Failed.');
+			}
 		} catch {
+			Object.assign(lead, prev);
 			toast.error('No response from the backend.');
 		} finally {
 			working = false;
@@ -146,7 +159,7 @@
 				class="mt-2.5 min-h-[80px] rounded-none border-hair bg-background px-3 py-3 text-base leading-normal focus-visible:border-foreground sm:text-sm focus-visible:ring-0"
 			/>
 			<div class="mt-3 flex flex-wrap items-center gap-2.5">
-				<Button class={btnSmall} disabled={working} onclick={save}>Save owner + notes</Button>
+				<Button class={btnSmall} disabled={working} onclick={save}>{working ? 'Saving' : 'Save owner + notes'}</Button>
 				<Button class={btnSmall} disabled={working} onclick={() => (crm.openId = null)}>Close</Button>
 			</div>
 			<Thread messages={lead.messages} />
