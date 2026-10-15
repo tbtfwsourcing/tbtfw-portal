@@ -83,12 +83,12 @@ One-time repo setting: **Settings → Pages → Build and deployment → Source:
     ms-auth/            Microsoft sign-in for garett@tbtfw.com (source included)
     lead-intake/        intake API, dedupe, Turnstile, photo uploads
     lead-enrich/        every 2 min: grading, voice drafts, follow-ups, replies
-    lead-crm/           backend for the CRM; Graph email send
+    lead-crm/           backend for the CRM; Graph email send (source included, v1.3)
     lead-inbox/         odd minutes: polls the Outlook inbox for replies
     inventory-sync/     hourly mirror of tbtfw.com inventory
     spec-inference/     Haiku grader, shared with the board; lead mode
 
-Only `ms-auth` is in this repo. Download the others from the Supabase dashboard (Edge Functions → the function
+Only `ms-auth` and `lead-crm` are in this repo. Download the others from the Supabase dashboard (Edge Functions → the function
 → Code → download) into `supabase/functions/<name>/index.ts`. Redeploy from the dashboard or with
 `supabase functions deploy <name> --project-ref qymkzfhdneukffeilrhx`. verify_jwt: `lead-intake`, `lead-crm`,
 `ms-auth` OFF (they gate themselves); the rest ON.

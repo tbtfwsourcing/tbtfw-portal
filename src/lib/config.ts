@@ -2,6 +2,9 @@
 export const INTAKE_API = 'https://qymkzfhdneukffeilrhx.supabase.co/functions/v1/lead-intake';
 export const CRM_API = 'https://qymkzfhdneukffeilrhx.supabase.co/functions/v1/lead-crm';
 
+// Where inventory photos are served from; the portal preconnects to it.
+export const IMAGE_CDN = 'https://automanager.blob.core.windows.net';
+
 // Cloudflare Turnstile, invisible widget. Public site key; the secret lives in Vault.
 export const TURNSTILE_SITE_KEY = '0x4AAAAAAFXP4PgRTicqUUVZ';
 

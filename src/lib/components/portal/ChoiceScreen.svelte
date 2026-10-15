@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { untrack } from 'svelte';
 	import { portal, start } from '#lib/portal/state.svelte.js';
 	import type { InventoryItem } from '#lib/api/intake.js';
 	import { sized } from '#lib/images.js';
@@ -99,10 +100,13 @@
 		};
 	}
 
+	// Only invLoaded is tracked. slide() reads `layers`, and if the effect
+	// tracked that too, the first image to load would re-run it: the cleanup
+	// would clear the interval and the early return would never restart it.
 	$effect(() => {
 		if (!portal.invLoaded || started) return;
 		started = true;
-		return startShow([...portal.inv, ...portal.past]);
+		return untrack(() => startShow([...portal.inv, ...portal.past]));
 	});
 </script>
 

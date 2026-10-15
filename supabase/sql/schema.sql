@@ -118,6 +118,8 @@ CREATE TABLE public.lead_photos (
   content_type text,
   created_at timestamptz NOT NULL DEFAULT now()
 );
+-- lead-intake looks photos up by lead on /complete; without this the FK has no covering index.
+CREATE INDEX IF NOT EXISTS lead_photos_lead_id_idx ON public.lead_photos (lead_id);
 
 CREATE TABLE public.tbtfw_inventory (
   stock_id text PRIMARY KEY,

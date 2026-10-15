@@ -57,9 +57,17 @@ async function post<T extends { _status: number }>(path: string, body: unknown):
 	return { ...j, _status: r.status } as T;
 }
 
+// The portal's prerendered <head> starts this request before the app's JS
+// has loaded (routes/+page.svelte). Reuse it rather than paying a second
+// round trip after hydration; fall back to a fresh fetch if it is missing or failed.
 export async function getInventory(): Promise<InventoryResponse> {
-	const r = await fetch(INTAKE_API + '/inventory');
-	const d = await r.json();
+	const g = globalThis as { __inv?: Promise<InventoryResponse | null> };
+	let d = g.__inv ? await g.__inv.catch(() => null) : null;
+	delete g.__inv;
+	if (!d) {
+		const r = await fetch(INTAKE_API + '/inventory');
+		d = await r.json();
+	}
 	return { items: d?.items ?? [], past: d?.past ?? [] };
 }
 

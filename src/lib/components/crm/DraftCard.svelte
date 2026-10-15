@@ -25,8 +25,10 @@
 	let body = $state(draft.body ?? '');
 	// svelte-ignore state_referenced_locally
 	let subject = $state(draft.subject ?? '');
-	let working = $state(false);
-	let pending = $state<null | 'send' | 'mark' | 'skip'>(null);
+	type Act = 'send' | 'mark' | 'skip';
+	// Which action is in flight, so its button can say so.
+	let working = $state<null | Act>(null);
+	let pending = $state<null | Act>(null);
 
 	const confirmCopy = {
 		send: { title: 'Send this message now?', action: 'Send' },
@@ -52,8 +54,13 @@
 		}
 	}
 
-	async function run(act: 'send' | 'mark' | 'skip') {
-		working = true;
+	// Called from the confirm dialog. Clear `pending` here, not in the dialog's
+	// callback: the {@const act} in that block is derived from `pending`, so
+	// reading it after `pending = null` yields null, and run(null) fell through
+	// to the skip endpoint whichever button was tapped.
+	async function run(act: Act) {
+		pending = null;
+		working = act;
 		try {
 			const subj = ch === 'email' ? subject : null;
 			const r =
@@ -64,15 +71,39 @@
 						: await api.skip(crm.key, draft.id);
 			if (r.json?.ok) {
 				toast.success(act === 'send' ? 'Sent.' : act === 'mark' ? 'Marked sent.' : 'Skipped.');
-				setTimeout(load, 700);
+				settle(act, subj);
 			} else {
-				working = false;
+				working = null;
 				toast.error(r.json?.message ?? 'Failed (HTTP ' + r.status + ').');
 			}
 		} catch {
-			working = false;
+			working = null;
 			toast.error('No response from the backend.');
 		}
+	}
+
+	// Mirror what the backend just did so the queue updates at once: the draft
+	// leaves the list, the lead shows the message and moves to contacted. A
+	// background reload then replaces this with the server's own copy.
+	function settle(act: Act, subj: string | null) {
+		const data = crm.data;
+		if (!data) return;
+		data.drafts = data.drafts.filter((d) => d.id !== draft.id);
+		const lead = leadById(draft.lead_id);
+		if (lead && act !== 'skip') {
+			if ((lead.status ?? 'new') === 'new') lead.status = 'contacted';
+			(lead.messages ??= []).push({
+				direction: 'out',
+				channel: ch,
+				purpose: draft.purpose,
+				status: 'sent',
+				provider: act === 'mark' ? 'manual' : undefined,
+				sent_at: new Date().toISOString(),
+				subject: subj ?? undefined,
+				body
+			});
+		}
+		load();
 	}
 
 	const btn =
@@ -148,23 +179,25 @@
 		{#if chanOn}
 			<Button
 				class="{btnPrimary} col-span-2 w-full sm:col-span-1 sm:w-auto"
-				disabled={working}
+				disabled={!!working}
 				onclick={() => (pending = 'send')}
 			>
-				Send {chanWord}
+				{working === 'send' ? 'Sending' : 'Send ' + chanWord}
 			</Button>
 		{:else}
-			<Button class="{btnPrimary} col-span-2 w-full sm:col-span-1 sm:w-auto" disabled={working} onclick={copy}>
+			<Button class="{btnPrimary} col-span-2 w-full sm:col-span-1 sm:w-auto" disabled={!!working} onclick={copy}>
 				Copy {chanWord}
 			</Button>
-			<Button class="{btn} w-full sm:w-auto" disabled={working} onclick={() => (pending = 'mark')}>
-				Mark sent by hand
+			<Button class="{btn} w-full sm:w-auto" disabled={!!working} onclick={() => (pending = 'mark')}>
+				{working === 'mark' ? 'Marking' : 'Mark sent by hand'}
 			</Button>
 		{/if}
-		<Button class="{btn} w-full sm:w-auto" disabled={working} onclick={() => (pending = 'skip')}>Skip</Button>
+		<Button class="{btn} w-full sm:w-auto" disabled={!!working} onclick={() => (pending = 'skip')}>
+			{working === 'skip' ? 'Skipping' : 'Skip'}
+		</Button>
 		<Button
 			class="{btn} {btnSmall} col-span-2 justify-self-end sm:col-span-1 sm:justify-self-auto"
-			disabled={working}
+			disabled={!!working}
 			onclick={() => l.id && openLead(l.id)}
 		>
 			Open lead
@@ -187,9 +220,6 @@
 		title={c.title}
 		description={'description' in c ? c.description : undefined}
 		action={c.action}
-		onconfirm={() => {
-			pending = null;
-			run(act);
-		}}
+		onconfirm={() => run(act)}
 	/>
 {/if}
