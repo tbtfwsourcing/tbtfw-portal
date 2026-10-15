@@ -1,0 +1,448 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<title>TBTFW // LEADS</title>
+<!-- TBTFW PORTAL — leads.html v2.0 (Oct 15, 2026, portal session three)
+     The CRM. Three views: QUEUE (drafts awaiting approval; Send / Copy +
+     Mark sent / Skip are the only ways a draft leaves), LEADS (every lead,
+     60 days, with search, filters, stage chips, owner, notes and the full
+     thread), VOICE (the drafting prompt, editable; lead-enrich reads it on
+     every tick). Every draft on this page was written by the system and has
+     NOT been sent. Key read from ?k= (Vault PORTAL_KEY); lead-crm is the only
+     data source; no client-side storage; zero backticks; all text escaped. -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Michroma&display=swap" rel="stylesheet">
+<style>
+  :root { --bg:#000; --fg:#fff; --hair:#232323; --dim:#8a8a8a; --acc:#c9c2b4; --card:#0a0a0a; }
+  * { box-sizing:border-box; }
+  html, body { margin:0; background:var(--bg); color:var(--fg); font-family:Inter, system-ui, -apple-system, sans-serif; font-size:15px; line-height:1.45; -webkit-font-smoothing:antialiased; }
+  body { padding:0 16px 90px; max-width:980px; margin:0 auto; }
+  .disp { font-family:Michroma, Inter, sans-serif; letter-spacing:.02em; }
+  .num { font-variant-numeric:tabular-nums; }
+  header { padding:18px 0 0; border-bottom:1px solid var(--hair); position:sticky; top:0; background:var(--bg); z-index:5; }
+  .hrow { display:flex; align-items:baseline; justify-content:space-between; gap:16px; }
+  header h1 { font-size:15px; margin:0; }
+  header .stat { font-size:11px; letter-spacing:.14em; text-transform:uppercase; color:var(--dim); white-space:nowrap; }
+  .tabs { display:flex; gap:0; margin-top:12px; }
+  .tab { font-size:11px; letter-spacing:.16em; text-transform:uppercase; padding:10px 16px 12px; color:var(--dim); cursor:pointer; border-bottom:2px solid transparent; margin-bottom:-1px; background:none; border-top:0; border-left:0; border-right:0; }
+  .tab.on { color:var(--fg); border-bottom-color:var(--fg); }
+  .tab .n { color:var(--acc); margin-left:6px; }
+  .eyebrow { font-size:10.5px; letter-spacing:.16em; text-transform:uppercase; color:var(--dim); margin:26px 0 10px; }
+  .card { border:1px solid var(--hair); background:var(--card); padding:16px; margin:0 0 12px; }
+  .card.chase, .card.watch { border-color:var(--fg); }
+  .row { display:flex; flex-wrap:wrap; gap:8px 14px; align-items:baseline; }
+  .title { font-size:14px; }
+  .spec { color:var(--dim); font-size:13px; }
+  .chip { display:inline-block; font-size:10px; letter-spacing:.14em; text-transform:uppercase; padding:4px 8px; border:1px solid var(--fg); line-height:1; }
+  .chip.solid { background:var(--fg); color:var(--bg); }
+  .chip.dim { border-color:var(--hair); color:var(--dim); }
+  .chip.acc { border-color:var(--acc); color:var(--acc); }
+  .chip.btn { cursor:pointer; }
+  .chip.btn:hover { border-color:var(--acc); color:var(--acc); }
+  .meta { font-size:12.5px; color:var(--dim); margin-top:8px; }
+  .meta b { color:var(--fg); font-weight:500; }
+  .why { font-size:13px; margin-top:6px; }
+  .flag { font-size:13px; margin-top:8px; color:var(--acc); }
+  .flag b, .miss b { font-size:10px; letter-spacing:.14em; text-transform:uppercase; font-weight:500; margin-right:8px; }
+  .miss { font-size:13px; margin-top:4px; color:var(--dim); }
+  textarea { width:100%; min-height:150px; background:#000; color:var(--fg); border:1px solid var(--hair); padding:12px; font:14px/1.5 Inter, sans-serif; resize:vertical; margin-top:10px; }
+  textarea.notes { min-height:80px; }
+  textarea.voice { min-height:420px; font-size:13.5px; }
+  textarea:focus, input:focus, select:focus { outline:none; border-color:var(--fg); }
+  input.subj, input.txt { width:100%; background:#000; color:var(--fg); border:1px solid var(--hair); padding:10px 12px; font:14px Inter, sans-serif; margin-top:10px; }
+  .actions { display:flex; gap:10px; flex-wrap:wrap; align-items:center; margin-top:12px; }
+  button { font:11px Inter, sans-serif; letter-spacing:.14em; text-transform:uppercase; padding:12px 16px; border:1px solid var(--fg); background:transparent; color:var(--fg); cursor:pointer; }
+  button.primary { background:var(--fg); color:var(--bg); }
+  button.small { padding:8px 12px; font-size:10px; }
+  button:disabled { opacity:.35; cursor:default; }
+  button:not(:disabled):hover { border-color:var(--acc); color:var(--acc); }
+  button.primary:not(:disabled):hover { background:var(--acc); border-color:var(--acc); color:var(--bg); }
+  .note { font-size:12px; color:var(--dim); }
+  .ok { color:var(--acc); }
+  .err { color:var(--fg); border-bottom:1px solid var(--fg); }
+  .lead { padding:14px 0; border-bottom:1px solid var(--hair); cursor:pointer; }
+  .lead.open { cursor:default; }
+  .lead .row { gap:6px 12px; }
+  .detail { margin-top:12px; }
+  .thread { margin-top:12px; border-top:1px solid var(--hair); }
+  .msg { padding:10px 0; border-bottom:1px solid var(--hair); font-size:13.5px; }
+  .msg .who { font-size:10px; letter-spacing:.14em; text-transform:uppercase; color:var(--dim); margin-bottom:4px; }
+  .msg.in .who { color:var(--acc); }
+  .msg .body { white-space:pre-wrap; }
+  .msg.in .body { border-left:2px solid var(--acc); padding-left:10px; }
+  .empty { color:var(--dim); padding:24px 0; }
+  .state { padding:40px 0; color:var(--dim); font-size:14px; }
+  .state b { color:var(--fg); font-weight:500; }
+  .count { color:var(--fg); }
+  .filters { display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin:16px 0 4px; }
+  .filters input.txt { margin:0; flex:1 1 220px; }
+  select { background:#000; color:var(--fg); border:1px solid var(--hair); padding:10px 12px; font:12px Inter, sans-serif; letter-spacing:.08em; text-transform:uppercase; }
+  .stages { display:flex; flex-wrap:wrap; gap:6px; margin-top:10px; }
+  .hide { display:none; }
+  @media (max-width:560px) { body { font-size:14px; } .card { padding:14px; } .tab { padding:10px 12px 12px; } }
+</style>
+</head>
+<body>
+<header>
+  <div class="hrow">
+    <h1 class="disp">TBTFW // LEADS</h1>
+    <div class="stat" id="stat">loading</div>
+  </div>
+  <div class="tabs">
+    <button class="tab on" data-tab="queue">Queue<span class="n" id="nq"></span></button>
+    <button class="tab" data-tab="leads">Leads<span class="n" id="nl"></span></button>
+    <button class="tab" data-tab="voice">Voice</button>
+  </div>
+</header>
+
+<div id="app"><div class="state">Loading.</div></div>
+
+<script>
+(function () {
+  var API = "https://qymkzfhdneukffeilrhx.supabase.co/functions/v1/lead-crm";
+  var KEY = "";
+  try { KEY = new URLSearchParams(location.search).get("k") || ""; } catch (e) { KEY = ""; }
+  var app = document.getElementById("app");
+  var stat = document.getElementById("stat");
+  var data = null;
+  var tab = "queue";
+  var openId = null;
+  var voice = null;
+  var f = { q: "", kind: "all", stage: "all", verdict: "all" };
+
+  function esc(s) {
+    return String(s === null || s === undefined ? "" : s)
+      .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+  }
+  function money(n) { var v = Number(n); return isFinite(v) && n !== null && n !== undefined ? "$" + Math.round(v).toLocaleString("en-US") : "no price"; }
+  function miles(n) { var v = Number(n); return isFinite(v) && n !== null && n !== undefined ? Math.round(v).toLocaleString("en-US") + " mi" : "mileage unknown"; }
+  function ago(iso) {
+    var t = Date.parse(iso || ""); if (!t) return "";
+    var m = Math.round((Date.now() - t) / 60000);
+    if (m < 1) return "just now";
+    if (m < 60) return m + " min ago";
+    var h = Math.round(m / 60); if (h < 48) return h + "h ago";
+    return Math.round(h / 24) + "d ago";
+  }
+  function identity(l) {
+    var parts = [l.year, l.canon_model || l.model, l.canon_trim || l.trim].filter(function (x) { return x !== null && x !== undefined && String(x).trim() !== ""; });
+    return parts.length ? parts.join(" ") : (l.make || "unknown car");
+  }
+  function verdictChip(v) {
+    if (!v) return '<span class="chip dim">UNGRADED</span>';
+    if (v === "CHASE" || v === "WATCH") return '<span class="chip solid">' + esc(v) + '</span>';
+    if (v === "FLAG") return '<span class="chip">' + esc(v) + '</span>';
+    return '<span class="chip dim">' + esc(v) + '</span>';
+  }
+  function tierChip(t) { return t ? '<span class="chip acc">' + esc(t) + '</span>' : ""; }
+  function classChip(c) { return c ? '<span class="chip ' + (c === "JUNK" ? "dim" : "") + '">' + esc(c) + '</span>' : ""; }
+  function stageChip(s, on) { return '<span class="chip ' + (on ? "solid" : "dim") + '">' + esc(s || "new") + '</span>'; }
+  function leadById(id) {
+    if (!data || !data.leads) return null;
+    for (var i = 0; i < data.leads.length; i++) if (data.leads[i].id === id) return data.leads[i];
+    return null;
+  }
+  function flagsBlock(l) {
+    var h = "";
+    if (l.flag) h += '<div class="flag"><b>Flag</b>' + esc(l.flag) + '</div>';
+    if (l.missing_info) h += '<div class="miss"><b>Missing</b>' + esc(l.missing_info) + '</div>';
+    return h;
+  }
+
+  // ---- QUEUE -----------------------------------------------------------------
+  function renderDraft(d) {
+    var l = leadById(d.lead_id) || {};
+    var isSell = l.kind === "sell";
+    var ch = d.channel;
+    var chanOn = data.channels && data.channels[ch];
+    var cls = "card" + (l.verdict === "CHASE" ? " chase" : (l.verdict === "WATCH" ? " watch" : ""));
+    var h = '<div class="' + cls + '" id="d-' + esc(d.id) + '">';
+    h += '<div class="row">';
+    h += '<span class="chip ' + (isSell ? "" : "dim") + '">' + (isSell ? "SELL" : "BUY") + '</span>';
+    h += classChip(l.classification);
+    h += '<span class="chip dim">' + esc(d.purpose || "").replace(/_/g, " ") + '</span>';
+    if (isSell) h += verdictChip(l.verdict) + tierChip(l.desirability_tier);
+    h += '<span class="disp title">' + esc(identity(l)) + '</span>';
+    h += '<span class="spec num">' + (isSell ? esc(miles(l.mileage)) + ' // asking ' + esc(money(l.asking_price)) : (l.stock_id ? 'stock ' + esc(l.stock_id) : esc(l.wanted_text || ""))) + '</span>';
+    h += '</div>';
+    if (isSell) {
+      h += '<div class="meta num">' + (l.comps_n ? 'US sold median <b>' + esc(money(l.comps_median)) + '</b> (n=' + esc(l.comps_n) + ')' : 'No sold comps on file') + (l.photo_count ? ' // ' + esc(l.photo_count) + ' photos' : '') + '</div>';
+      if (l.desirability_why) h += '<div class="why">' + esc(l.desirability_why) + '</div>';
+    }
+    h += flagsBlock(l);
+    h += '<div class="meta"><b>' + esc(l.full_name || "") + '</b> // ' + esc(l.phone || "") + ' // ' + esc(l.email || "") + (l.zip ? ' // ' + esc(l.zip) : '') + (l.contact_pref ? ' // prefers ' + esc(l.contact_pref) : '') + '</div>';
+    if (l.message) h += '<div class="meta">Their note: ' + esc(l.message) + '</div>';
+    if (d.purpose === "reply") {
+      var ins = (l.messages || []).filter(function (m) { return m.direction === "in"; });
+      if (ins.length) h += '<div class="msg in"><div class="who">Customer // ' + esc(ago(ins[ins.length - 1].sent_at || ins[ins.length - 1].created_at)) + '</div><div class="body">' + esc(ins[ins.length - 1].body || "") + '</div></div>';
+    }
+    h += '<div class="meta">Ref ' + esc(l.ref || "") + ' // ' + esc(l.source || "") + ' // ' + esc(ago(l.created_at)) + ' // draft for <b>' + esc(ch === "sms" ? "text" : ch) + '</b> to ' + esc(d.to_address || "") + '</div>';
+    if (ch === "email") h += '<input class="subj" id="s-' + esc(d.id) + '" value="' + esc(d.subject || "") + '" placeholder="Subject">';
+    h += '<textarea id="t-' + esc(d.id) + '">' + esc(d.body || "") + '</textarea>';
+    h += '<div class="actions">';
+    if (chanOn) {
+      h += '<button class="primary" data-act="send" data-id="' + esc(d.id) + '">Send ' + (ch === "sms" ? "text" : "email") + '</button>';
+    } else {
+      h += '<button class="primary" data-act="copy" data-id="' + esc(d.id) + '">Copy ' + (ch === "sms" ? "text" : "email") + '</button>';
+      h += '<button data-act="mark" data-id="' + esc(d.id) + '">Mark sent by hand</button>';
+    }
+    h += '<button data-act="skip" data-id="' + esc(d.id) + '">Skip</button>';
+    h += '<button class="small" data-act="goto" data-id="' + esc(l.id) + '">Open lead</button>';
+    h += '<span class="note" id="n-' + esc(d.id) + '">' + (chanOn ? "" : (ch === "sms" ? "Text sending is off until the number is approved. Copy, send from your phone, then mark it." : "Email is off until the mailbox is connected. Copy, send from Outlook, then mark it.")) + '</span>';
+    h += '</div></div>';
+    return h;
+  }
+  function renderQueue() {
+    var drafts = data.drafts || [];
+    var h = '<div class="eyebrow">Awaiting your approval // <span class="count">' + drafts.length + '</span></div>';
+    if (!drafts.length) h += '<div class="empty">Nothing waiting. New leads draft themselves within two minutes of landing; replies and follow-ups land here too.</div>';
+    for (var i = 0; i < drafts.length; i++) h += renderDraft(drafts[i]);
+    return h;
+  }
+
+  // ---- LEADS -----------------------------------------------------------------
+  function matches(l) {
+    if (f.kind !== "all" && l.kind !== f.kind) return false;
+    if (f.stage !== "all" && (l.status || "new") !== f.stage) return false;
+    if (f.verdict !== "all" && (l.verdict || "") !== f.verdict) return false;
+    if (f.q) {
+      var q = f.q.toLowerCase();
+      var hay = [l.full_name, l.phone, l.email, l.vin, l.ref, identity(l), l.stock_id, l.wanted_text, l.notes, l.assigned_to].join(" ").toLowerCase();
+      if (hay.indexOf(q) === -1) return false;
+    }
+    return true;
+  }
+  function renderThread(l) {
+    var ms = l.messages || [];
+    if (!ms.length) return '<div class="note" style="margin-top:10px">No messages yet.</div>';
+    var h = '<div class="thread">';
+    for (var i = 0; i < ms.length; i++) {
+      var m = ms[i];
+      var isIn = m.direction === "in";
+      h += '<div class="msg ' + (isIn ? "in" : "out") + '">';
+      h += '<div class="who">' + (isIn ? "Customer" : "Garett") + ' // ' + esc(m.channel) + ' // ' + esc(String(m.purpose || "").replace(/_/g, " ")) + ' // <span class="' + (m.status === "sent" || m.status === "received" ? "ok" : "") + '">' + esc(m.status) + (m.provider === "manual" ? " by hand" : "") + '</span> // ' + esc(ago(m.sent_at || m.created_at)) + (m.error ? ' // ' + esc(m.error) : '') + '</div>';
+      if (m.subject && m.channel === "email") h += '<div class="note">' + esc(m.subject) + '</div>';
+      h += '<div class="body">' + esc(m.body || "") + '</div>';
+      h += '</div>';
+    }
+    h += '</div>';
+    return h;
+  }
+  function renderLead(l) {
+    var isSell = l.kind === "sell";
+    var open = l.id === openId;
+    var h = '<div class="lead' + (open ? " open" : "") + '" data-lead="' + esc(l.id) + '" id="l-' + esc(l.id) + '">';
+    h += '<div class="row">';
+    h += stageChip(l.status, l.status === "new" || l.status === "replied");
+    h += '<span class="chip dim">' + (isSell ? "SELL" : "BUY") + '</span>';
+    h += classChip(l.classification);
+    if (isSell) h += verdictChip(l.verdict) + tierChip(l.desirability_tier);
+    h += '<span class="disp title">' + esc(identity(l)) + '</span>';
+    h += '<span class="spec">' + esc(l.full_name || "") + ' // ' + esc(l.ref || "") + ' // ' + esc(ago(l.created_at)) + (l.assigned_to ? ' // ' + esc(l.assigned_to) : '') + '</span>';
+    h += '</div>';
+    if (isSell) h += '<div class="meta num">' + esc(miles(l.mileage)) + ' // asking ' + esc(money(l.asking_price)) + (l.comps_n ? ' // median ' + esc(money(l.comps_median)) + ' (n=' + esc(l.comps_n) + ')' : '') + (l.enriched_at ? '' : ' // grading pending') + '</div>';
+    else h += '<div class="meta">' + (l.stock_id ? 'stock ' + esc(l.stock_id) : esc(l.wanted_text || "")) + '</div>';
+    if (!open) {
+      var ms = l.messages || [];
+      var last = ms.length ? ms[ms.length - 1] : null;
+      if (l.flag) h += '<div class="flag"><b>Flag</b>' + esc(l.flag) + '</div>';
+      if (last) h += '<div class="meta">Last: ' + (last.direction === "in" ? "customer" : "us") + ' // ' + esc(last.channel) + ' // ' + esc(last.status) + ' // ' + esc(ago(last.sent_at || last.created_at)) + '</div>';
+      h += '</div>';
+      return h;
+    }
+    h += '<div class="detail">';
+    h += flagsBlock(l);
+    h += '<div class="meta"><b>' + esc(l.full_name || "") + '</b> // ' + esc(l.phone || "") + ' // ' + esc(l.email || "") + (l.zip ? ' // ' + esc(l.zip) : '') + (l.contact_pref ? ' // prefers ' + esc(l.contact_pref) : '') + '</div>';
+    if (isSell) h += '<div class="meta">VIN ' + esc(l.vin || "") + (l.intent ? ' // ' + esc(l.intent) : '') + (l.condition ? ' // ' + esc(l.condition) : '') + (l.photo_count ? ' // ' + esc(l.photo_count) + ' photos' : '') + '</div>';
+    if (l.desirability_why) h += '<div class="why">' + esc(l.desirability_why) + '</div>';
+    if (l.verdict_reasoning) h += '<div class="meta">' + esc(l.verdict_reasoning) + '</div>';
+    if (l.message) h += '<div class="meta">Their note: ' + esc(l.message) + '</div>';
+    h += '<div class="meta">Ref ' + esc(l.ref || "") + ' // ' + esc(l.source || "") + ' // ' + esc(l.channel || "") + ' // created ' + esc(ago(l.created_at)) + '</div>';
+    h += '<div class="stages">';
+    var stages = data.stages || ["new", "contacted", "replied", "offered", "won", "lost", "junk"];
+    for (var s = 0; s < stages.length; s++) {
+      if (stages[s] === "duplicate" && l.status !== "duplicate") continue;
+      h += '<span class="chip btn ' + ((l.status || "new") === stages[s] ? "solid" : "dim") + '" data-stage="' + esc(stages[s]) + '" data-id="' + esc(l.id) + '">' + esc(stages[s]) + '</span>';
+    }
+    h += '</div>';
+    h += '<input class="txt" id="o-' + esc(l.id) + '" value="' + esc(l.assigned_to || "") + '" placeholder="Owner">';
+    h += '<textarea class="notes" id="nt-' + esc(l.id) + '" placeholder="Notes">' + esc(l.notes || "") + '</textarea>';
+    h += '<div class="actions"><button class="small" data-act="savelead" data-id="' + esc(l.id) + '">Save owner + notes</button><button class="small" data-act="close" data-id="' + esc(l.id) + '">Close</button><span class="note" id="ln-' + esc(l.id) + '"></span></div>';
+    h += renderThread(l);
+    h += '</div></div>';
+    return h;
+  }
+  function renderLeads() {
+    var leads = (data.leads || []).filter(matches);
+    var h = '<div class="filters">';
+    h += '<input class="txt" id="q" value="' + esc(f.q) + '" placeholder="Search name, phone, VIN, ref, car">';
+    h += '<select id="fk"><option value="all">All kinds</option><option value="sell"' + (f.kind === "sell" ? " selected" : "") + '>Sell</option><option value="buy"' + (f.kind === "buy" ? " selected" : "") + '>Buy</option></select>';
+    var stages = data.stages || [];
+    h += '<select id="fs"><option value="all">All stages</option>';
+    for (var i = 0; i < stages.length; i++) h += '<option value="' + esc(stages[i]) + '"' + (f.stage === stages[i] ? " selected" : "") + '>' + esc(stages[i]) + '</option>';
+    h += '</select>';
+    h += '<select id="fv"><option value="all">All verdicts</option>';
+    var vs = ["CHASE", "WATCH", "FLAG", "PASS"];
+    for (var v = 0; v < vs.length; v++) h += '<option value="' + vs[v] + '"' + (f.verdict === vs[v] ? " selected" : "") + '>' + vs[v] + '</option>';
+    h += '</select></div>';
+    h += '<div class="eyebrow">Last 60 days // <span class="count">' + leads.length + '</span> of ' + (data.leads || []).length + ' leads</div>';
+    if (!leads.length) h += '<div class="empty">Nothing matches.</div>';
+    for (var j = 0; j < leads.length; j++) h += renderLead(leads[j]);
+    return h;
+  }
+
+  // ---- VOICE -----------------------------------------------------------------
+  function renderVoice() {
+    var h = '<div class="eyebrow">The drafting prompt // every first touch, follow-up and reply is written under it</div>';
+    if (!voice) { h += '<div class="note">Loading.</div>'; loadVoice(); return h; }
+    h += '<textarea class="voice" id="vt">' + esc(voice.text || "") + '</textarea>';
+    h += '<div class="actions"><button class="primary" data-act="savevoice">Save voice</button><span class="note" id="vn">' + (voice.updated_at ? 'Version ' + esc(voice.v || "") + ' // saved ' + esc(ago(voice.updated_at)) : '') + '</span></div>';
+    h += '<div class="note" style="margin-top:14px">Changes apply to the next draft the system writes. Existing drafts in the queue are not rewritten. Hard rules the system adds on top of this and that you cannot turn off here: a human approves every send; no price or money figure first; only facts from the lead; one question; never AI, automated, bot or system.</div>';
+    return h;
+  }
+  function loadVoice() {
+    fetch(API + "/voice?k=" + encodeURIComponent(KEY), { cache: "no-store" }).then(function (r) { return r.json(); }).then(function (j) {
+      if (j && j.ok) { voice = j; if (tab === "voice") render(); }
+    }).catch(function () { /* stays loading */ });
+  }
+
+  // ---- shell -----------------------------------------------------------------
+  function render() {
+    if (!data) return;
+    var drafts = data.drafts || [];
+    var h = tab === "queue" ? renderQueue() : (tab === "leads" ? renderLeads() : renderVoice());
+    app.innerHTML = h;
+    document.getElementById("nq").textContent = drafts.length ? String(drafts.length) : "";
+    document.getElementById("nl").textContent = String((data.leads || []).length);
+    var ch = data.channels || {};
+    stat.textContent = drafts.length + ' TO APPROVE // EMAIL ' + (ch.email ? 'ON' : 'OFF') + ' // TEXT ' + (ch.sms ? 'ON' : 'OFF');
+    var tabs = document.querySelectorAll(".tab");
+    for (var i = 0; i < tabs.length; i++) tabs[i].className = "tab" + (tabs[i].getAttribute("data-tab") === tab ? " on" : "");
+    if (tab === "leads") {
+      var q = document.getElementById("q");
+      if (q) q.addEventListener("input", function () { f.q = q.value; var keep = q.value; render(); var q2 = document.getElementById("q"); if (q2) { q2.focus(); q2.value = keep; } });
+      var fk = document.getElementById("fk"), fs = document.getElementById("fs"), fv = document.getElementById("fv");
+      if (fk) fk.addEventListener("change", function () { f.kind = fk.value; render(); });
+      if (fs) fs.addEventListener("change", function () { f.stage = fs.value; render(); });
+      if (fv) fv.addEventListener("change", function () { f.verdict = fv.value; render(); });
+    }
+  }
+  function showState(title, body) {
+    app.innerHTML = '<div class="state"><b>' + esc(title) + '</b><br>' + esc(body) + '</div>';
+    stat.textContent = '';
+  }
+  function load() {
+    if (!KEY) { showState("No key in the address.", "Open this page with ?k= followed by the portal key from Supabase Vault (PORTAL_KEY)."); return; }
+    fetch(API + "/queue?k=" + encodeURIComponent(KEY), { cache: "no-store" })
+      .then(function (r) { return r.json().then(function (j) { return { s: r.status, j: j }; }); })
+      .then(function (x) {
+        if (x.s === 401) { showState("Bad key.", "The ?k= in the address does not match the portal key. Check it in Supabase Vault (PORTAL_KEY) and reload."); return; }
+        if (!x.j || !x.j.ok) { showState("The queue did not load.", (x.j && x.j.message) ? x.j.message : "HTTP " + x.s + ". Try again in a minute; if it persists, check lead-crm in the Supabase dashboard."); return; }
+        data = x.j; render();
+      })
+      .catch(function () { showState("The queue did not load.", "No response from the portal backend. Check your connection and reload."); });
+  }
+  function post(path, body) {
+    return fetch(API + path + "?k=" + encodeURIComponent(KEY), { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body || {}) })
+      .then(function (r) { return r.json().then(function (j) { return { s: r.status, j: j }; }); });
+  }
+  function note(id, text, cls) {
+    var n = document.getElementById(id);
+    if (n) { n.className = "note " + (cls || ""); n.textContent = text; }
+  }
+  function busy(cardId, on) {
+    var card = document.getElementById(cardId); if (!card) return;
+    var bs = card.querySelectorAll("button");
+    for (var i = 0; i < bs.length; i++) bs[i].disabled = !!on;
+  }
+
+  document.querySelector(".tabs").addEventListener("click", function (ev) {
+    var t = ev.target.closest ? ev.target.closest(".tab") : null;
+    if (!t) return;
+    tab = t.getAttribute("data-tab");
+    render();
+  });
+
+  app.addEventListener("click", function (ev) {
+    var chip = ev.target.closest ? ev.target.closest(".chip.btn[data-stage]") : null;
+    if (chip) {
+      var lid = chip.getAttribute("data-id"), st = chip.getAttribute("data-stage");
+      if (st === "junk" && !confirm("Mark this lead junk? It will never be messaged.")) return;
+      post("/lead/" + lid + "/status", { status: st }).then(function (x) {
+        if (x.j && x.j.ok) { var l = leadById(lid); if (l) l.status = st; render(); note("ln-" + lid, "Stage set to " + st + ".", "ok"); }
+        else note("ln-" + lid, (x.j && x.j.message) || "Failed.", "err");
+      });
+      return;
+    }
+    var b = ev.target.closest ? ev.target.closest("button[data-act]") : null;
+    if (!b) {
+      var row = ev.target.closest ? ev.target.closest(".lead[data-lead]") : null;
+      if (row && !row.classList.contains("open")) { openId = row.getAttribute("data-lead"); render(); var el = document.getElementById("l-" + openId); if (el) el.scrollIntoView({ block: "start", behavior: "smooth" }); }
+      return;
+    }
+    var id = b.getAttribute("data-id");
+    var act = b.getAttribute("data-act");
+    if (act === "close") { openId = null; render(); return; }
+    if (act === "goto") { openId = id; tab = "leads"; f = { q: "", kind: "all", stage: "all", verdict: "all" }; render(); var el2 = document.getElementById("l-" + id); if (el2) el2.scrollIntoView({ block: "start" }); return; }
+    if (act === "savelead") {
+      var o = document.getElementById("o-" + id), nt = document.getElementById("nt-" + id);
+      busy("l-" + id, true); note("ln-" + id, "Saving.", "");
+      post("/lead/" + id + "/note", { notes: nt ? nt.value : "" }).then(function () { return post("/lead/" + id + "/owner", { assigned_to: o ? o.value : "" }); }).then(function (x) {
+        busy("l-" + id, false);
+        if (x.j && x.j.ok) { var l = leadById(id); if (l) { l.notes = nt ? nt.value : ""; l.assigned_to = o ? o.value : ""; } note("ln-" + id, "Saved.", "ok"); }
+        else note("ln-" + id, (x.j && x.j.message) || "Failed.", "err");
+      }).catch(function () { busy("l-" + id, false); note("ln-" + id, "No response from the backend.", "err"); });
+      return;
+    }
+    if (act === "savevoice") {
+      var vt = document.getElementById("vt");
+      if (!vt) return;
+      if (!confirm("Save this as the voice for every future draft?")) return;
+      b.disabled = true; note("vn", "Saving.", "");
+      post("/voice", { text: vt.value }).then(function (x) {
+        b.disabled = false;
+        if (x.j && x.j.ok) { voice = { text: vt.value, v: x.j.v, updated_at: new Date().toISOString() }; note("vn", "Saved as version " + x.j.v + ". Applies to the next draft.", "ok"); }
+        else note("vn", (x.j && x.j.message) || "Failed.", "err");
+      }).catch(function () { b.disabled = false; note("vn", "No response from the backend.", "err"); });
+      return;
+    }
+    // draft actions
+    var ta = document.getElementById("t-" + id);
+    var si = document.getElementById("s-" + id);
+    var bodyText = ta ? ta.value : "";
+    var subj = si ? si.value : null;
+    if (act === "copy") {
+      var txt = (subj ? "Subject: " + subj + "\n\n" : "") + bodyText;
+      var done = function () { note("n-" + id, "Copied. Send it from your phone or Outlook, then tap Mark sent by hand.", "ok"); };
+      if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(txt).then(done, function () { if (ta) ta.select(); note("n-" + id, "Select the text and copy it.", ""); });
+      else { if (ta) ta.select(); note("n-" + id, "Select the text and copy it.", ""); }
+      return;
+    }
+    if (act === "skip" && !confirm("Skip this draft? Nothing will be sent and it leaves the queue.")) return;
+    if (act === "send" && !confirm("Send this message now?")) return;
+    if (act === "mark" && !confirm("Mark this as sent by hand? It is recorded as sent, and the lead moves to contacted.")) return;
+    busy("d-" + id, true); note("n-" + id, act === "send" ? "Sending." : "Working.", "");
+    var p = act === "send" ? post("/message/" + id + "/send", { body: bodyText, subject: subj })
+          : act === "mark" ? post("/message/" + id + "/mark", { body: bodyText, subject: subj })
+          : post("/message/" + id + "/skip", {});
+    p.then(function (x) {
+      if (x.j && x.j.ok) {
+        note("n-" + id, act === "send" ? "Sent." : (act === "mark" ? "Marked sent." : "Skipped."), "ok");
+        setTimeout(load, 700);
+      } else {
+        busy("d-" + id, false);
+        note("n-" + id, (x.j && x.j.message) ? x.j.message : "Failed (HTTP " + x.s + ").", "err");
+      }
+    }).catch(function () { busy("d-" + id, false); note("n-" + id, "No response from the backend.", "err"); });
+  });
+
+  load();
+  setInterval(function () { if (document.visibilityState === "visible" && !document.activeElement.matches("textarea, input") && tab !== "voice") load(); }, 60000);
+})();
+</script>
+</body>
+</html>

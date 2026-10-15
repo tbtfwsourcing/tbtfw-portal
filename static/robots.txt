@@ -1,0 +1,5 @@
+User-agent: *
+Allow: /
+Disallow: /leads.html
+Disallow: /legacy/
+Sitemap: https://tbtfwsourcing.github.io/tbtfw-portal/sitemap.xml
