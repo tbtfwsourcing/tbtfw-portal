@@ -21,7 +21,9 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: 22
+          # Match the local toolchain: the lockfile is written by npm 11 (Node 26),
+          # and npm 10 resolves shadcn-svelte's kit peer differently and rejects it.
+          node-version: 26
           cache: npm
       - run: npm ci
       - run: npm run check
