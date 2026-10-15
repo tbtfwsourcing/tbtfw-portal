@@ -1,0 +1,256 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<title>TBTFW // LEADS</title>
+<!-- TBTFW PORTAL — leads.html v1.0 (Oct 15, 2026, portal session two)
+     The approval queue. Every draft on this page was written by the system and
+     has NOT been sent. Send and Skip are the only two ways a draft leaves the
+     queue. Key read from ?k= (Vault PORTAL_KEY); lead-crm is the only data
+     source; no client-side storage; zero backticks; all text escaped. -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Michroma&display=swap" rel="stylesheet">
+<style>
+  :root { --bg:#000; --fg:#fff; --hair:#232323; --dim:#8a8a8a; --acc:#c9c2b4; --card:#0a0a0a; }
+  * { box-sizing:border-box; }
+  html, body { margin:0; background:var(--bg); color:var(--fg); font-family:Inter, system-ui, -apple-system, sans-serif; font-size:15px; line-height:1.45; -webkit-font-smoothing:antialiased; }
+  body { padding:0 16px 80px; max-width:980px; margin:0 auto; }
+  .disp { font-family:Michroma, Inter, sans-serif; letter-spacing:.02em; }
+  .num { font-variant-numeric:tabular-nums; }
+  header { display:flex; align-items:baseline; justify-content:space-between; gap:16px; padding:22px 0 14px; border-bottom:1px solid var(--hair); position:sticky; top:0; background:var(--bg); z-index:5; }
+  header h1 { font-size:15px; margin:0; }
+  header .stat { font-size:11px; letter-spacing:.14em; text-transform:uppercase; color:var(--dim); white-space:nowrap; }
+  .eyebrow { font-size:10.5px; letter-spacing:.16em; text-transform:uppercase; color:var(--dim); margin:28px 0 10px; }
+  .card { border:1px solid var(--hair); background:var(--card); padding:16px; margin:0 0 12px; }
+  .card.chase, .card.watch { border-color:var(--fg); }
+  .row { display:flex; flex-wrap:wrap; gap:8px 14px; align-items:baseline; }
+  .title { font-size:14px; }
+  .spec { color:var(--dim); font-size:13px; }
+  .chip { display:inline-block; font-size:10px; letter-spacing:.14em; text-transform:uppercase; padding:4px 8px; border:1px solid var(--fg); line-height:1; }
+  .chip.solid { background:var(--fg); color:var(--bg); }
+  .chip.dim { border-color:var(--hair); color:var(--dim); }
+  .chip.acc { border-color:var(--acc); color:var(--acc); }
+  .meta { font-size:12.5px; color:var(--dim); margin-top:8px; }
+  .meta b { color:var(--fg); font-weight:500; }
+  .why { font-size:13px; margin-top:6px; }
+  textarea { width:100%; min-height:150px; background:#000; color:var(--fg); border:1px solid var(--hair); padding:12px; font:14px/1.5 Inter, sans-serif; resize:vertical; margin-top:10px; }
+  textarea:focus, input:focus { outline:none; border-color:var(--fg); }
+  input.subj { width:100%; background:#000; color:var(--fg); border:1px solid var(--hair); padding:10px 12px; font:14px Inter, sans-serif; margin-top:10px; }
+  .actions { display:flex; gap:10px; flex-wrap:wrap; align-items:center; margin-top:12px; }
+  button { font:11px Inter, sans-serif; letter-spacing:.14em; text-transform:uppercase; padding:12px 16px; border:1px solid var(--fg); background:transparent; color:var(--fg); cursor:pointer; }
+  button.primary { background:var(--fg); color:var(--bg); }
+  button:disabled { opacity:.35; cursor:default; }
+  button:not(:disabled):hover { border-color:var(--acc); color:var(--acc); }
+  button.primary:not(:disabled):hover { background:var(--acc); border-color:var(--acc); color:var(--bg); }
+  .note { font-size:12px; color:var(--dim); }
+  .ok { color:var(--acc); }
+  .err { color:var(--fg); border-bottom:1px solid var(--fg); }
+  .lead { padding:12px 0; border-bottom:1px solid var(--hair); }
+  .lead .row { gap:6px 12px; }
+  .msgs { margin-top:6px; font-size:12px; color:var(--dim); }
+  .empty { color:var(--dim); padding:24px 0; }
+  .state { padding:40px 0; color:var(--dim); font-size:14px; }
+  .state b { color:var(--fg); font-weight:500; }
+  details summary { cursor:pointer; color:var(--dim); font-size:12px; margin-top:8px; }
+  .count { color:var(--fg); }
+  @media (max-width:560px) { body { font-size:14px; } header { padding:16px 0 12px; } .card { padding:14px; } }
+</style>
+</head>
+<body>
+<header>
+  <h1 class="disp">TBTFW // LEADS</h1>
+  <div class="stat" id="stat">loading</div>
+</header>
+
+<div id="app"><div class="state">Loading the queue.</div></div>
+
+<script>
+(function () {
+  var API = "https://qymkzfhdneukffeilrhx.supabase.co/functions/v1/lead-crm";
+  var KEY = "";
+  try { KEY = new URLSearchParams(location.search).get("k") || ""; } catch (e) { KEY = ""; }
+  var app = document.getElementById("app");
+  var stat = document.getElementById("stat");
+  var data = null;
+
+  function esc(s) {
+    return String(s === null || s === undefined ? "" : s)
+      .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+  }
+  function money(n) { var v = Number(n); return isFinite(v) && n !== null && n !== undefined ? "$" + Math.round(v).toLocaleString("en-US") : "no price"; }
+  function miles(n) { var v = Number(n); return isFinite(v) && n !== null && n !== undefined ? Math.round(v).toLocaleString("en-US") + " mi" : "mileage unknown"; }
+  function ago(iso) {
+    var t = Date.parse(iso || ""); if (!t) return "";
+    var m = Math.round((Date.now() - t) / 60000);
+    if (m < 1) return "just now";
+    if (m < 60) return m + " min ago";
+    var h = Math.round(m / 60); if (h < 48) return h + "h ago";
+    return Math.round(h / 24) + "d ago";
+  }
+  function identity(l) {
+    var parts = [l.year, l.canon_model || l.model, l.canon_trim || l.trim].filter(function (x) { return x !== null && x !== undefined && String(x).trim() !== ""; });
+    return parts.length ? parts.join(" ") : (l.make || "unknown car");
+  }
+  function verdictChip(v) {
+    if (!v) return '<span class="chip dim">UNGRADED</span>';
+    if (v === "CHASE" || v === "WATCH") return '<span class="chip solid">' + esc(v) + '</span>';
+    if (v === "FLAG") return '<span class="chip">' + esc(v) + '</span>';
+    return '<span class="chip dim">' + esc(v) + '</span>';
+  }
+  function tierChip(t) { return t ? '<span class="chip acc">' + esc(t) + '</span>' : ""; }
+
+  function leadById(id) {
+    if (!data || !data.leads) return null;
+    for (var i = 0; i < data.leads.length; i++) if (data.leads[i].id === id) return data.leads[i];
+    return null;
+  }
+
+  function renderDraft(d) {
+    var l = leadById(d.lead_id) || {};
+    var isSell = l.kind === "sell";
+    var ch = d.channel;
+    var chanOn = data.channels && data.channels[ch];
+    var cls = "card" + (l.verdict === "CHASE" ? " chase" : (l.verdict === "WATCH" ? " watch" : ""));
+    var h = '<div class="' + cls + '" id="d-' + esc(d.id) + '">';
+    h += '<div class="row">';
+    h += '<span class="chip ' + (isSell ? "" : "dim") + '">' + (isSell ? "SELL" : "BUY") + '</span>';
+    h += verdictChip(l.verdict) + tierChip(l.desirability_tier);
+    h += '<span class="disp title">' + esc(identity(l)) + '</span>';
+    h += '<span class="spec num">' + (isSell ? esc(miles(l.mileage)) + ' // asking ' + esc(money(l.asking_price)) : (l.stock_id ? 'stock ' + esc(l.stock_id) : esc(l.wanted_text || ""))) + '</span>';
+    h += '</div>';
+    if (isSell) {
+      h += '<div class="meta num">' + (l.comps_n ? 'US sold median <b>' + esc(money(l.comps_median)) + '</b> (n=' + esc(l.comps_n) + ')' : 'No sold comps on file') + (l.photo_count ? ' // ' + esc(l.photo_count) + ' photos' : '') + '</div>';
+      if (l.desirability_why) h += '<div class="why">' + esc(l.desirability_why) + '</div>';
+    }
+    h += '<div class="meta"><b>' + esc(l.full_name || "") + '</b> // ' + esc(l.phone || "") + ' // ' + esc(l.email || "") + (l.zip ? ' // ' + esc(l.zip) : '') + (l.contact_pref ? ' // prefers ' + esc(l.contact_pref) : '') + '</div>';
+    if (l.message) h += '<div class="meta">Their note: ' + esc(l.message) + '</div>';
+    h += '<div class="meta">Ref ' + esc(l.ref || "") + ' // ' + esc(l.source || "") + ' // ' + esc(ago(l.created_at)) + ' // draft for <b>' + esc(ch === "sms" ? "text" : ch) + '</b> to ' + esc(d.to_address || "") + '</div>';
+    if (ch === "email") h += '<input class="subj" id="s-' + esc(d.id) + '" value="' + esc(d.subject || "") + '" placeholder="Subject">';
+    h += '<textarea id="t-' + esc(d.id) + '">' + esc(d.body || "") + '</textarea>';
+    h += '<div class="actions">';
+    if (chanOn) {
+      h += '<button class="primary" data-act="send" data-id="' + esc(d.id) + '">Send ' + (ch === "sms" ? "text" : "email") + '</button>';
+    } else {
+      h += '<button class="primary" data-act="copy" data-id="' + esc(d.id) + '">Copy ' + (ch === "sms" ? "text" : "email") + '</button>';
+      h += '<span class="note">' + (ch === "sms" ? "Text sending is off until the Twilio number is approved; copy and send from your phone, then mark it." : "Email sending is off until RESEND_API_KEY is set; copy and send from your mail, then mark it.") + '</span>';
+      h += '<button data-act="mark" data-id="' + esc(d.id) + '">Mark sent by hand</button>';
+    }
+    h += '<button data-act="skip" data-id="' + esc(d.id) + '">Skip</button>';
+    h += '<span class="note" id="n-' + esc(d.id) + '"></span>';
+    h += '</div></div>';
+    return h;
+  }
+
+  function renderLead(l) {
+    var isSell = l.kind === "sell";
+    var h = '<div class="lead">';
+    h += '<div class="row">';
+    h += '<span class="chip ' + (l.status === "new" ? "" : "dim") + '">' + esc(l.status || "new") + '</span>';
+    h += '<span class="chip dim">' + (isSell ? "SELL" : "BUY") + '</span>';
+    if (isSell) h += verdictChip(l.verdict) + tierChip(l.desirability_tier);
+    h += '<span class="disp title">' + esc(identity(l)) + '</span>';
+    h += '<span class="spec">' + esc(l.full_name || "") + ' // ' + esc(l.ref || "") + ' // ' + esc(ago(l.created_at)) + '</span>';
+    h += '</div>';
+    if (isSell) h += '<div class="meta num">' + esc(miles(l.mileage)) + ' // asking ' + esc(money(l.asking_price)) + (l.comps_n ? ' // median ' + esc(money(l.comps_median)) + ' (n=' + esc(l.comps_n) + ')' : '') + (l.enriched_at ? '' : ' // grading pending') + '</div>';
+    var ms = l.messages || [];
+    if (ms.length) {
+      h += '<div class="msgs">';
+      for (var i = 0; i < ms.length; i++) {
+        var m = ms[i];
+        h += esc(m.purpose) + ' // ' + esc(m.channel) + ' // <span class="' + (m.status === "sent" ? "ok" : "") + '">' + esc(m.status) + '</span>' + (m.sent_at ? ' ' + esc(ago(m.sent_at)) : '') + (m.error ? ' // ' + esc(m.error) : '') + (i < ms.length - 1 ? '<br>' : '');
+      }
+      h += '</div>';
+    }
+    h += '</div>';
+    return h;
+  }
+
+  function render() {
+    var drafts = data.drafts || [];
+    var leads = data.leads || [];
+    var h = '';
+    h += '<div class="eyebrow">Awaiting your approval // <span class="count">' + drafts.length + '</span></div>';
+    if (!drafts.length) h += '<div class="empty">Nothing waiting. New leads draft themselves within two minutes of landing.</div>';
+    for (var i = 0; i < drafts.length; i++) h += renderDraft(drafts[i]);
+    h += '<div class="eyebrow">Last 14 days // <span class="count">' + leads.length + '</span> leads</div>';
+    if (!leads.length) h += '<div class="empty">No leads yet.</div>';
+    for (var j = 0; j < leads.length; j++) h += renderLead(leads[j]);
+    app.innerHTML = h;
+    var ch = data.channels || {};
+    stat.textContent = drafts.length + ' TO APPROVE // EMAIL ' + (ch.email ? 'ON' : 'OFF') + ' // TEXT ' + (ch.sms ? 'ON' : 'OFF');
+  }
+
+  function showState(title, body) {
+    app.innerHTML = '<div class="state"><b>' + esc(title) + '</b><br>' + esc(body) + '</div>';
+    stat.textContent = '';
+  }
+
+  function load() {
+    if (!KEY) { showState("No key in the address.", "Open this page with ?k= followed by the portal key from Supabase Vault (PORTAL_KEY)."); return; }
+    stat.textContent = 'loading';
+    fetch(API + "/queue?k=" + encodeURIComponent(KEY), { cache: "no-store" })
+      .then(function (r) { return r.json().then(function (j) { return { s: r.status, j: j }; }); })
+      .then(function (x) {
+        if (x.s === 401) { showState("Bad key.", "The ?k= in the address does not match the portal key. Check it in Supabase Vault (PORTAL_KEY) and reload."); return; }
+        if (!x.j || !x.j.ok) { showState("The queue did not load.", (x.j && x.j.message) ? x.j.message : "HTTP " + x.s + ". Try again in a minute; if it persists, check lead-crm in the Supabase dashboard."); return; }
+        data = x.j; render();
+      })
+      .catch(function () { showState("The queue did not load.", "No response from the portal backend. Check your connection and reload."); });
+  }
+
+  function post(path, body) {
+    return fetch(API + path + "?k=" + encodeURIComponent(KEY), { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body || {}) })
+      .then(function (r) { return r.json().then(function (j) { return { s: r.status, j: j }; }); });
+  }
+
+  function note(id, text, cls) {
+    var n = document.getElementById("n-" + id);
+    if (n) { n.className = "note " + (cls || ""); n.textContent = text; }
+  }
+  function busy(id, on) {
+    var card = document.getElementById("d-" + id); if (!card) return;
+    var bs = card.querySelectorAll("button");
+    for (var i = 0; i < bs.length; i++) bs[i].disabled = !!on;
+  }
+
+  app.addEventListener("click", function (ev) {
+    var b = ev.target.closest ? ev.target.closest("button[data-act]") : null;
+    if (!b) return;
+    var id = b.getAttribute("data-id");
+    var act = b.getAttribute("data-act");
+    var ta = document.getElementById("t-" + id);
+    var si = document.getElementById("s-" + id);
+    var bodyText = ta ? ta.value : "";
+    var subj = si ? si.value : null;
+    if (act === "copy") {
+      var txt = (subj ? "Subject: " + subj + "\n\n" : "") + bodyText;
+      var done = function () { note(id, "Copied. Send it from your phone or mail, then tap Mark sent by hand.", "ok"); };
+      if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(txt).then(done, function () { ta.select(); note(id, "Select the text and copy it.", ""); });
+      else { ta.select(); note(id, "Select the text and copy it.", ""); }
+      return;
+    }
+    if (act === "skip" && !confirm("Skip this draft? Nothing will be sent and it leaves the queue.")) return;
+    if (act === "send" && !confirm("Send this message now?")) return;
+    if (act === "mark" && !confirm("Mark this as sent by hand? It leaves the queue as skipped-by-system, sent-by-you.")) return;
+    busy(id, true); note(id, act === "send" ? "Sending." : "Working.", "");
+    var p = act === "send" ? post("/message/" + id + "/send", { body: bodyText, subject: subj }) : post("/message/" + id + "/skip", {});
+    p.then(function (x) {
+      if (x.j && x.j.ok) {
+        note(id, act === "send" ? "Sent." : (act === "mark" ? "Marked. Remember to send it yourself." : "Skipped."), "ok");
+        setTimeout(load, 700);
+      } else {
+        busy(id, false);
+        note(id, (x.j && x.j.message) ? x.j.message : "Failed (HTTP " + x.s + ").", "err");
+      }
+    }).catch(function () { busy(id, false); note(id, "No response from the backend.", "err"); });
+  });
+
+  load();
+  setInterval(function () { if (document.visibilityState === "visible" && !document.activeElement.matches("textarea, input")) load(); }, 60000);
+})();
+</script>
+</body>
+</html>
