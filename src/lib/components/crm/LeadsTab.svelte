@@ -17,7 +17,7 @@
 		type="search"
 		bind:value={crm.filters.q}
 		placeholder="Search name, phone, VIN, ref, car"
-		class="h-[42px] min-w-[220px] flex-1 rounded-none border-hair bg-background px-3 text-sm focus-visible:border-foreground focus-visible:ring-0"
+		class="h-[42px] min-w-[220px] flex-1 rounded-none border-hair bg-background px-3 text-base focus-visible:border-foreground focus-visible:ring-0 sm:text-sm"
 	/>
 	<select class={sel} bind:value={crm.filters.kind} aria-label="Kind">
 		<option value="all">All kinds</option>

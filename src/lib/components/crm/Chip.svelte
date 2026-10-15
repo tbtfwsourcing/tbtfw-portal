@@ -20,9 +20,10 @@
 </script>
 
 {#if onclick}
+	<!-- Clickable chips get a thumb-sized target on phones; display chips stay compact. -->
 	<button
 		type="button"
-		class="{base} {look[variant]} cursor-pointer transition-colors hover:border-bone hover:text-bone {className}"
+		class="{base} {look[variant]} min-h-9 cursor-pointer px-3 transition-colors hover:border-bone hover:text-bone sm:min-h-0 sm:px-2 {className}"
 		{onclick}
 	>
 		{@render children()}

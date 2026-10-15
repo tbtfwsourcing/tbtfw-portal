@@ -138,12 +138,12 @@
 			<Input
 				bind:value={owner}
 				placeholder="Owner"
-				class="mt-2.5 h-auto rounded-none border-hair bg-background px-3 py-2.5 text-sm focus-visible:border-foreground focus-visible:ring-0"
+				class="mt-2.5 h-auto rounded-none border-hair bg-background px-3 py-2.5 text-base focus-visible:border-foreground sm:text-sm focus-visible:ring-0"
 			/>
 			<Textarea
 				bind:value={notes}
 				placeholder="Notes"
-				class="mt-2.5 min-h-[80px] rounded-none border-hair bg-background px-3 py-3 text-sm leading-normal focus-visible:border-foreground focus-visible:ring-0"
+				class="mt-2.5 min-h-[80px] rounded-none border-hair bg-background px-3 py-3 text-base leading-normal focus-visible:border-foreground sm:text-sm focus-visible:ring-0"
 			/>
 			<div class="mt-3 flex flex-wrap items-center gap-2.5">
 				<Button class={btnSmall} disabled={working} onclick={save}>Save owner + notes</Button>

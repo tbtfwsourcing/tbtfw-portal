@@ -89,10 +89,11 @@
 <div class="mx-auto max-w-[980px] px-4 pb-24">
 	<Tabs.Root bind:value={crm.tab as string} onValueChange={(v) => (crm.tab = v as Tab)}>
 		<header class="sticky top-0 z-10 border-b border-hair bg-background pt-[calc(18px+env(safe-area-inset-top))]">
-			<div class="flex items-baseline justify-between gap-4">
+			<!-- On a phone the stat line drops under the wordmark and may wrap; from sm: it is one line. -->
+			<div class="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1.5">
 				<Wordmark suffix="LEADS" />
-				<div class="flex items-center gap-1.5">
-					<div class="eyebrow num whitespace-nowrap">{stat}</div>
+				<div class="flex min-w-0 items-center gap-1.5">
+					<div class="eyebrow num sm:whitespace-nowrap">{stat}</div>
 					<Button
 						variant="ghost"
 						size="icon-xs"

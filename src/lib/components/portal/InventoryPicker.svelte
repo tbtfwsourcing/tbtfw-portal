@@ -56,7 +56,7 @@
 		{#each { length: 6 } as _, n (n)}
 			<div class="car sk" aria-hidden="true">
 				<Skeleton class="aspect-[4/3] w-full rounded-none border-b border-hair bg-muted" />
-				<span class="grid content-start gap-3 p-3">
+				<span class="txt">
 					<Skeleton class="h-3 w-3/4 rounded-none bg-muted" />
 					<Skeleton class="h-3 w-1/2 rounded-none bg-muted" />
 				</span>
@@ -225,6 +225,13 @@
 	.car.sk {
 		pointer-events: none;
 	}
+	/* Same box as .id + .pr (two clamped lines, then the price line) so rows are the same height before and after load. */
+	.car.sk .txt {
+		display: grid;
+		align-content: space-between;
+		min-height: calc(11px * 1.4 * 2 + 16px + 13px * 1.5 + 12px);
+		padding: 12px;
+	}
 	@media (min-width: 720px) {
 		/* Break the grid (and its Show-all control) out of the 560px form column so cards get room to breathe. */
 		.picker,
@@ -245,8 +252,9 @@
 			flex: none;
 			max-width: none;
 		}
-		/* Collapsed: the first PREVIEW (10) cards only. Mobile keeps its scroller, so this lives inside the desktop query. */
-		.picker.collapsed .car:nth-child(n + 11) {
+		/* Collapsed: the first PREVIEW (10) cards only, plus the chosen one so a pick made while expanded
+		   (or under a make filter) never disappears. Mobile keeps its scroller, so this lives inside the desktop query. */
+		.picker.collapsed .car:nth-child(n + 11):not(:has(input:checked)) {
 			display: none;
 		}
 	}
