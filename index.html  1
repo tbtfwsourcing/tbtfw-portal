@@ -1,0 +1,820 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>TBTFW // Portal</title>
+<meta name="description" content="Sell your car to TBTFW or ask about a car in stock. Beverly Hills.">
+<meta name="robots" content="index, follow">
+<meta name="theme-color" content="#000000">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500&family=Michroma&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#000000;--fg:#ffffff;--hair:#232323;--acc:#c9c2b4;--mute:#8c8c8c;--g:20px;--body:Inter,-apple-system,"Helvetica Neue",Arial,sans-serif;--disp:Michroma,"Helvetica Neue",Arial,sans-serif}
+*{box-sizing:border-box;margin:0;padding:0}
+html{background:var(--bg);-webkit-text-size-adjust:100%}
+body{background:var(--bg);color:var(--fg);font-family:var(--body);font-size:16px;line-height:1.45;min-height:100vh;min-height:100dvh;padding-left:env(safe-area-inset-left);padding-right:env(safe-area-inset-right);overflow-x:hidden}
+a{color:inherit}
+button,input,select,textarea{font:inherit;color:inherit}
+img{display:block;max-width:100%}
+#progress{position:fixed;top:0;left:0;height:2px;width:0;background:var(--acc);z-index:50;transition:width 1.2s ease-out,opacity .3s;opacity:0}
+#progress.on{opacity:1}
+.hd{display:flex;align-items:center;justify-content:space-between;height:56px;padding:0 var(--g);padding-top:env(safe-area-inset-top)}
+.wordmark{font-family:var(--disp);font-size:13px;letter-spacing:.12em;text-decoration:none;color:var(--fg)}
+.wordmark span{color:var(--mute)}
+main{position:relative;max-width:560px;margin:0 auto;padding-bottom:calc(32px + env(safe-area-inset-bottom))}
+.screen{padding:0 var(--g)}
+.screen[hidden]{display:none}
+@keyframes inR{from{transform:translateX(24px);opacity:0}to{transform:none;opacity:1}}
+@keyframes inL{from{transform:translateX(-24px);opacity:0}to{transform:none;opacity:1}}
+.screen.fwd{animation:inR 240ms ease-out}
+.screen.bwd{animation:inL 240ms ease-out}
+h1,h2{font-family:var(--disp);font-weight:400;letter-spacing:.02em}
+h1{font-size:22px;line-height:1.2;margin:8px 0 20px}
+h2{font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--fg);margin:36px 0 4px}
+p{max-width:36em}
+.lede{color:var(--mute);font-size:15px;margin-bottom:12px}
+.rail{display:flex;align-items:center;justify-content:space-between;height:44px;margin:4px 0 8px;font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--mute)}
+.rail b{font-weight:400;color:var(--acc)}
+.back{background:none;border:0;padding:0 12px 0 0;height:44px;color:var(--fg);font-size:13px;letter-spacing:.04em;text-transform:none;cursor:pointer}
+.back:focus-visible{outline:1px solid var(--acc);outline-offset:4px}
+/* choice */
+#s-choice{padding:0;width:100vw;max-width:100vw;margin-left:calc(50% - 50vw)}
+.choice{display:flex;flex-direction:column;gap:1px;background:var(--hair);height:calc(100vh - 120px);height:calc(100dvh - 120px);min-height:520px}
+.panel{position:relative;display:block;flex:1 1 0;min-height:0;background:var(--bg);border:0;text-decoration:none;color:var(--fg);overflow:hidden;cursor:pointer;text-align:left;width:100%}
+.panel img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:0;z-index:1;transition:opacity 1200ms ease-out}
+.panel img.ready{opacity:1;z-index:2}
+.panel .scrim{z-index:3}
+.panel .scrim em{display:block;font-style:normal;color:var(--mute);font-size:12px;letter-spacing:.02em;font-variant-numeric:tabular-nums;margin-bottom:6px;min-height:17px}
+.panel .scrim{position:absolute;left:0;right:0;bottom:0;background:var(--bg);padding:16px var(--g) 18px}
+.panel .scrim strong{display:block;font-family:var(--disp);font-weight:400;font-size:20px;letter-spacing:.04em;margin-bottom:4px}
+.panel .scrim span{display:block;color:var(--mute);font-size:14px;max-width:36em}
+.panel:focus-visible{outline:1px solid var(--acc);outline-offset:-2px}
+.panel:active .scrim strong{color:var(--acc)}
+.tradelink{display:block;width:auto;margin:0 var(--g);padding:20px 0;background:none;border:0;border-top:1px solid var(--hair);color:var(--fg);font-size:15px;text-align:left;cursor:pointer}
+.tradelink span{color:var(--mute)}
+.tradelink:focus-visible{outline:1px solid var(--acc);outline-offset:4px}
+/* fields */
+.field{position:relative;margin:0 0 22px}
+.field label{position:absolute;left:0;top:16px;color:var(--mute);font-size:16px;pointer-events:none;transition:transform .15s ease-out,color .15s,font-size .15s;transform-origin:left top}
+.field input,.field textarea{display:block;width:100%;background:transparent;border:0;border-bottom:1px solid var(--hair);border-radius:0;padding:22px 0 10px;font-size:16px;color:var(--fg);outline:none;font-variant-numeric:tabular-nums}
+.field textarea{min-height:88px;resize:vertical}
+.field input::placeholder,.field textarea::placeholder{color:transparent}
+.field input:focus,.field textarea:focus{border-bottom-color:var(--acc)}
+.field input:focus + label,.field input:not(:placeholder-shown) + label,.field textarea:focus + label,.field textarea:not(:placeholder-shown) + label{transform:translateY(-16px);font-size:11px;letter-spacing:.08em;text-transform:uppercase}
+.field input:focus + label,.field textarea:focus + label{color:var(--acc)}
+.field input[aria-invalid="true"]{border-bottom-color:var(--fg)}
+.field .hint{display:block;margin-top:8px;color:var(--mute);font-size:13px}
+.field .fe{display:block;margin-top:8px;color:var(--fg);font-size:14px;min-height:0}
+.field.money input{padding-left:14px}
+.field.money::before{content:"$";position:absolute;left:0;top:23px;color:var(--mute);font-size:16px}
+.field.money label{left:14px}
+.field.money input:focus + label,.field.money input:not(:placeholder-shown) + label{left:0}
+.sel{position:relative;margin:0 0 16px}
+.sel select{display:block;width:100%;height:44px;background:transparent;border:0;border-bottom:1px solid var(--hair);border-radius:0;color:var(--fg);font-size:16px;-webkit-appearance:none;appearance:none;padding-right:28px;outline:none}
+.sel select:focus{border-bottom-color:var(--acc)}
+.sel svg{position:absolute;right:2px;top:15px;pointer-events:none}
+.sel label{display:block;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--mute);margin-bottom:2px}
+/* chips and toggles */
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin:6px 0 18px}
+.chip{position:relative;display:inline-flex;align-items:center;min-height:44px;padding:0 16px;border:1px solid var(--hair);font-size:14px;cursor:pointer;color:var(--fg)}
+.chip input{position:absolute;opacity:0;width:1px;height:1px;left:0;top:0}
+.chip:has(input:checked),.chip.on{background:var(--fg);color:var(--bg);border-color:var(--fg)}
+.chip:has(input:focus-visible){outline:1px solid var(--acc);outline-offset:2px}
+.chip input:checked ~ span,.chip.on span{color:var(--bg)}
+.toggle{display:flex;align-items:flex-start;gap:12px;min-height:44px;padding:10px 0;cursor:pointer;font-size:15px}
+.toggle input{position:absolute;opacity:0;width:1px;height:1px}
+.toggle .box{flex:0 0 auto;width:20px;height:20px;margin-top:2px;border:1px solid var(--hair);background:transparent}
+.toggle:has(input:checked) .box,.toggle.on .box{background:var(--fg);border-color:var(--fg)}
+.toggle:has(input:focus-visible) .box{outline:1px solid var(--acc);outline-offset:3px}
+.toggle.consent{font-size:13px;color:var(--mute);line-height:1.5;padding-top:18px}
+.toggle.consent:has(input:checked),.toggle.consent.on{color:var(--fg)}
+.privacy{font-size:12px;color:var(--mute);margin:-4px 0 18px}
+.privacy a{color:var(--mute)}
+.lbl{display:block;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--mute);margin:14px 0 2px}
+/* disclosure */
+details.more{border-top:1px solid var(--hair);border-bottom:1px solid var(--hair);margin:8px 0 22px}
+details.more summary{display:flex;align-items:center;justify-content:space-between;min-height:52px;cursor:pointer;list-style:none;font-size:15px}
+details.more summary::-webkit-details-marker{display:none}
+details.more summary:focus-visible{outline:1px solid var(--acc);outline-offset:2px}
+details.more[open] summary svg{transform:rotate(180deg)}
+details.more .inner{padding:4px 0 16px}
+/* picker */
+.picker{display:flex;gap:10px;overflow-x:auto;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;padding:2px 2px 8px;margin:0 -2px;scrollbar-width:none}
+.picker::-webkit-scrollbar{display:none}
+.car{position:relative;flex:0 0 72%;max-width:260px;scroll-snap-align:start;border:1px solid var(--hair);background:var(--bg);cursor:pointer;transition:transform 120ms ease-out,border-color 120ms;display:block}
+.car input{position:absolute;opacity:0;width:1px;height:1px;left:0;top:0}
+.car .ph{display:block;aspect-ratio:4/3;background:var(--bg);overflow:hidden;border-bottom:1px solid var(--hair)}
+.car .ph img{width:100%;height:100%;object-fit:cover}
+.car .id{display:block;font-family:var(--disp);font-size:11px;letter-spacing:.04em;padding:12px 12px 4px;line-height:1.35}
+.car .pr{display:block;font-size:14px;font-variant-numeric:tabular-nums;padding:0 12px 12px;color:var(--mute)}
+.car:active{transform:scale(1.02)}
+.car:has(input:checked),.car.on{border-color:var(--acc)}
+.car:has(input:checked) .pr,.car.on .pr{color:var(--fg)}
+.car:has(input:focus-visible){outline:1px solid var(--acc);outline-offset:2px}
+.car.hide{display:none}
+.notlisted{margin-top:6px}
+.empty{color:var(--mute);font-size:14px;padding:12px 0}
+/* vin moment */
+.vinwrap{margin-top:4px}
+.identity{min-height:0;margin:8px 0 2px}
+.identity .w{display:block;font-family:var(--disp);font-size:24px;line-height:1.25;letter-spacing:.02em;opacity:0;transform:translateY(8px)}
+.identity .w.in{animation:settle 320ms ease-out forwards}
+.identity .w.y{font-size:16px;color:var(--mute)}
+.identity .w.t{font-size:16px}
+.identity .rule{display:block;height:1px;background:var(--hair);transform:scaleX(0);transform-origin:left;margin:12px 0 4px}
+.identity .rule.in{animation:draw 420ms ease-out 360ms forwards}
+.identity .status{display:block;color:var(--mute);font-size:13px;min-height:20px}
+@keyframes settle{to{opacity:1;transform:none}}
+@keyframes draw{to{transform:scaleX(1)}}
+.vinwrap.decoded .field input{font-size:13px;color:var(--mute);padding-top:10px;padding-bottom:8px;letter-spacing:.06em}
+.vinwrap.decoded .field label{transform:translateY(-10px);font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--mute)}
+/* photos */
+.slots{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:8px 0 6px}
+.slot{position:relative;display:block;aspect-ratio:1/1;border:1px solid var(--hair);background:var(--bg);cursor:pointer;overflow:hidden}
+.slot input{position:absolute;opacity:0;width:1px;height:1px;left:0;top:0}
+.slot img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:0;transition:opacity .35s ease-out}
+.slot img.ready{opacity:1}
+.slot .n{position:absolute;left:10px;bottom:9px;right:8px;font-size:12px;line-height:1.25;color:var(--fg)}
+.slot.filled .n{background:var(--bg);display:inline-block;left:0;bottom:0;right:auto;padding:5px 10px 6px}
+.slot:has(input:focus-visible){outline:1px solid var(--acc);outline-offset:2px}
+.slot:active{border-color:var(--acc)}
+.addrow{display:flex;align-items:center;justify-content:space-between;min-height:44px;margin-bottom:6px}
+.addrow label{font-size:14px;text-decoration:underline;text-underline-offset:4px;cursor:pointer;padding:10px 0}
+.addrow input{position:absolute;opacity:0;width:1px;height:1px}
+.addrow .cnt{font-size:13px;color:var(--mute);font-variant-numeric:tabular-nums}
+.addrow:has(input:focus-visible) label{outline:1px solid var(--acc);outline-offset:4px}
+.extras{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px}
+.extras img{width:52px;height:52px;object-fit:cover;border:1px solid var(--hair)}
+/* buttons */
+.btn{display:block;width:100%;height:56px;background:var(--fg);color:var(--bg);border:0;border-radius:0;font-size:15px;font-weight:500;letter-spacing:.02em;cursor:pointer;margin-top:8px}
+.btn:disabled{opacity:.5;cursor:default}
+.btn:focus-visible{outline:1px solid var(--acc);outline-offset:3px}
+.btn2{display:block;width:100%;min-height:52px;margin-top:4px;background:none;border:0;border-top:1px solid var(--hair);color:var(--fg);font-size:15px;cursor:pointer;text-align:center}
+.btn2:focus-visible{outline:1px solid var(--acc);outline-offset:2px}
+.err{color:var(--fg);font-size:14px;margin:12px 0 0;min-height:0}
+.err:empty{display:none}
+.hp{position:absolute;left:-9999px;top:-9999px;width:1px;height:1px;opacity:0}
+/* confirmation */
+.done .photo{aspect-ratio:4/3;border:1px solid var(--hair);overflow:hidden;margin:4px 0 24px;background:var(--bg)}
+.done .photo img{width:100%;height:100%;object-fit:cover}
+.done .photo:empty{display:none}
+.ref{font-family:var(--disp);font-size:26px;letter-spacing:.04em;font-variant-numeric:tabular-nums;margin-bottom:6px}
+.spec{color:var(--mute);font-size:14px;font-variant-numeric:tabular-nums;margin-bottom:18px}
+.done p{font-size:16px;margin-bottom:28px}
+.done a.home{display:block;padding:16px 0;border-top:1px solid var(--hair);text-decoration:none;font-size:15px}
+.done a.home:focus-visible{outline:1px solid var(--acc);outline-offset:2px}
+.ts{min-height:0}
+@media (hover:hover){.btn:hover{background:var(--acc)}}
+@media (min-width:720px){
+ .choice{flex-direction:row;height:calc(100vh - 136px);min-height:480px}
+ .panel .scrim{padding:22px 28px 26px}
+ .panel .scrim strong{font-size:26px}
+ .panel .scrim span{font-size:15px}
+ .tradelink{max-width:560px;margin:0 auto}
+ .picker{display:grid;grid-template-columns:repeat(3,1fr);overflow:visible;scroll-snap-type:none}
+ .car{flex:none;max-width:none}
+ h1{font-size:26px}
+}
+@media (prefers-reduced-motion:reduce){
+ *,*::before,*::after{animation:none!important;transition:none!important}
+ .identity .w{opacity:1;transform:none}
+ .identity .rule{transform:none}
+ .panel img,.slot img{opacity:1}
+}
+</style>
+</head>
+<body>
+<div id="progress" aria-hidden="true"></div>
+<header class="hd"><a class="wordmark" href="https://www.tbtfw.com">TBTFW <span>// PORTAL</span></a></header>
+<main id="stage">
+
+<section id="s-choice" class="screen" aria-label="Choose">
+ <div class="choice">
+  <button type="button" class="panel" id="go-sell" data-go="sell">
+   <img id="panel-sell-a" alt=""><img id="panel-sell-b" alt="">
+   <span class="scrim"><em id="panel-sell-cap"></em><strong>Sell my car</strong><span>Tell us what you have. A salesperson will respond within the hour.</span></span>
+  </button>
+  <button type="button" class="panel" id="go-buy" data-go="buy">
+   <img id="panel-buy-a" alt=""><img id="panel-buy-b" alt="">
+   <span class="scrim"><em id="panel-buy-cap"></em><strong>Find my next car</strong><span>Ask about a car in stock, or tell us what to find.</span></span>
+  </button>
+ </div>
+ <button type="button" class="tradelink" id="go-trade" data-go="trade">Trading in? <span>Start with the car you want.</span></button>
+</section>
+
+<section id="s-buy" class="screen" hidden aria-label="Buy">
+ <div class="rail"><button type="button" class="back" data-back>Back</button><span id="rail-buy">BUY // <b>1 OF 1</b></span></div>
+ <form id="f-buy" action="https://qymkzfhdneukffeilrhx.supabase.co/functions/v1/lead-intake/lead" method="post" novalidate>
+  <input type="hidden" name="kind" value="buy">
+  <input type="hidden" name="source" id="buy-source" value="direct">
+  <div class="hp" aria-hidden="true"><label for="buy-website">Leave this empty</label><input type="text" id="buy-website" name="website" tabindex="-1" autocomplete="off"></div>
+  <h1>Which car</h1>
+  <div class="sel"><label for="make_filter">Make</label><select id="make_filter" name="make_filter"><option value="">All makes</option></select><svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="#ffffff" stroke-width="1.5"><path d="M2 5l5 5 5-5"/></svg></div>
+  <div class="picker" id="picker" role="radiogroup" aria-label="Vehicle of interest"></div>
+  <p class="empty" id="picker-empty" hidden>Inventory is loading. If it does not appear, tell us what you are looking for below.</p>
+  <label class="toggle notlisted" for="stock-other"><input type="radio" name="stock_id" id="stock-other" value="other"><span class="box"></span><span>I am looking for something not listed</span></label>
+  <div class="field" id="wanted-wrap" hidden><textarea id="wanted_text" name="wanted_text" placeholder=" " rows="3"></textarea><label for="wanted_text">What should we find for you</label></div>
+
+  <h2>Your details</h2>
+  <div class="field"><input type="text" id="buy-full_name" name="full_name" placeholder=" " autocomplete="name" required><label for="buy-full_name">Name</label></div>
+  <div class="field"><input type="tel" id="buy-phone" name="phone" placeholder=" " autocomplete="tel" inputmode="tel" required><label for="buy-phone">Phone</label></div>
+  <div class="field"><input type="email" id="buy-email" name="email" placeholder=" " autocomplete="email" inputmode="email" required><label for="buy-email">Email</label></div>
+  <div class="field"><textarea id="buy-message" name="message" placeholder=" " rows="3"></textarea><label for="buy-message">Message</label><span class="hint">Is it still available, can I see it Saturday, what is the service history</span></div>
+
+  <details class="more"><summary>A few more details <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="#ffffff" stroke-width="1.5"><path d="M2 5l5 5 5-5"/></svg></summary>
+   <div class="inner">
+    <label class="toggle" for="has_trade"><input type="checkbox" id="has_trade" name="has_trade" value="true"><span class="box"></span><span>I have a trade-in</span></label>
+    <span class="lbl" id="l-timeline-buy">Timeline</span>
+    <div class="chips" role="radiogroup" aria-labelledby="l-timeline-buy">
+     <label class="chip" for="buy-tl1"><input type="radio" id="buy-tl1" name="timeline" value="This week"><span>This week</span></label>
+     <label class="chip" for="buy-tl2"><input type="radio" id="buy-tl2" name="timeline" value="30 days"><span>30 days</span></label>
+     <label class="chip" for="buy-tl3"><input type="radio" id="buy-tl3" name="timeline" value="Just looking"><span>Just looking</span></label>
+    </div>
+    <label class="toggle" for="wants_financing"><input type="checkbox" id="wants_financing" name="wants_financing" value="true"><span class="box"></span><span>I would like financing options</span></label>
+    <div class="field"><input type="text" id="buy-zip" name="zip" placeholder=" " inputmode="numeric" maxlength="5" autocomplete="postal-code"><label for="buy-zip">ZIP</label></div>
+    <span class="lbl" id="l-pref-buy">Reach me by</span>
+    <div class="chips" role="radiogroup" aria-labelledby="l-pref-buy">
+     <label class="chip" for="buy-cp1"><input type="radio" id="buy-cp1" name="contact_pref" value="Text"><span>Text</span></label>
+     <label class="chip" for="buy-cp2"><input type="radio" id="buy-cp2" name="contact_pref" value="Call"><span>Call</span></label>
+     <label class="chip" for="buy-cp3"><input type="radio" id="buy-cp3" name="contact_pref" value="Email"><span>Email</span></label>
+    </div>
+    <div class="field"><input type="text" id="buy-best_time" name="best_time" placeholder=" "><label for="buy-best_time">Best time</label></div>
+   </div>
+  </details>
+
+  <label class="toggle consent" for="buy-consent"><input type="checkbox" id="buy-consent" name="consent" value="true" required><span class="box"></span><span>I agree to be contacted by TBTFW by call, text and email about this inquiry. Message and data rates may apply. Reply STOP to opt out.</span></label>
+  <p class="privacy">We use your details only to reply to this inquiry. <a href="https://www.tbtfw.com/policies/privacy-policy" target="_blank" rel="noopener">Privacy</a></p>
+  <div class="ts" id="ts-buy"></div>
+  <button type="submit" class="btn" id="buy-submit">Ask about this car</button>
+  <p class="err" id="err-buy" role="alert"></p>
+ </form>
+</section>
+
+<section id="s-sell1" class="screen" hidden aria-label="Sell, your car">
+ <div class="rail"><button type="button" class="back" data-back>Back</button><span id="rail-sell1">SELL // <b>1 OF 2</b></span></div>
+ <form id="f-sell" action="https://qymkzfhdneukffeilrhx.supabase.co/functions/v1/lead-intake/lead" method="post" enctype="multipart/form-data" novalidate>
+  <input type="hidden" name="kind" value="sell">
+  <input type="hidden" name="source" id="sell-source" value="direct">
+  <input type="hidden" name="trade_group_id" id="sell-tg" value="">
+  <input type="hidden" name="year" id="vin-year" value="">
+  <input type="hidden" name="make" id="vin-make" value="">
+  <input type="hidden" name="model" id="vin-model" value="">
+  <input type="hidden" name="trim" id="vin-trim" value="">
+  <div class="hp" aria-hidden="true"><label for="sell-website">Leave this empty</label><input type="text" id="sell-website" name="website" tabindex="-1" autocomplete="off"></div>
+  <h1>Your car</h1>
+  <div class="vinwrap" id="vinwrap">
+   <div class="identity" id="identity" aria-live="polite"></div>
+   <div class="field"><input type="text" id="vin" name="vin" placeholder=" " maxlength="17" autocapitalize="characters" autocomplete="off" spellcheck="false" inputmode="text" required><label for="vin">VIN</label><span class="fe" id="vin-fe"></span></div>
+  </div>
+  <div class="field"><input type="text" id="mileage" name="mileage" placeholder=" " inputmode="numeric" required><label for="mileage">Mileage</label></div>
+  <div class="field money"><input type="text" id="asking_price" name="asking_price" placeholder=" " inputmode="numeric" required><label for="asking_price">What are you looking to get?</label></div>
+
+  <h2>Photos</h2>
+  <p class="lede">Three or more. Camera or library, your choice.</p>
+  <div class="slots" id="slots">
+   <label class="slot" for="ph-front34"><input type="file" id="ph-front34" name="photo_front34" accept="image/*" data-slot="front34"><img alt=""><span class="n">Front three quarter</span></label>
+   <label class="slot" for="ph-rear34"><input type="file" id="ph-rear34" name="photo_rear34" accept="image/*" data-slot="rear34"><img alt=""><span class="n">Rear three quarter</span></label>
+   <label class="slot" for="ph-interior"><input type="file" id="ph-interior" name="photo_interior" accept="image/*" data-slot="interior"><img alt=""><span class="n">Interior</span></label>
+   <label class="slot" for="ph-odometer"><input type="file" id="ph-odometer" name="photo_odometer" accept="image/*" data-slot="odometer"><img alt=""><span class="n">Odometer</span></label>
+   <label class="slot" for="ph-vin_plate"><input type="file" id="ph-vin_plate" name="photo_vin_plate" accept="image/*" data-slot="vin_plate"><img alt=""><span class="n">VIN plate</span></label>
+   <label class="slot" for="ph-sticker"><input type="file" id="ph-sticker" name="photo_sticker" accept="image/*" data-slot="sticker"><img alt=""><span class="n">Window sticker or build sheet</span></label>
+  </div>
+  <div class="extras" id="extras"></div>
+  <div class="addrow"><label for="photos">Add photos</label><input type="file" id="photos" name="photos[]" multiple accept="image/*"><span class="cnt" id="photo-count">0 of 3 required</span></div>
+
+  <h2>Your details</h2>
+  <div class="field"><input type="text" id="sell-full_name" name="full_name" placeholder=" " autocomplete="name" required><label for="sell-full_name">Name</label></div>
+  <div class="field"><input type="tel" id="sell-phone" name="phone" placeholder=" " autocomplete="tel" inputmode="tel" required><label for="sell-phone">Phone</label></div>
+  <div class="field"><input type="email" id="sell-email" name="email" placeholder=" " autocomplete="email" inputmode="email" required><label for="sell-email">Email</label></div>
+
+  <label class="toggle consent" for="sell-consent"><input type="checkbox" id="sell-consent" name="consent" value="true" required><span class="box"></span><span>I agree to be contacted by TBTFW by call, text and email about this inquiry. Message and data rates may apply. Reply STOP to opt out.</span></label>
+  <p class="privacy">We use your details only to reply to this inquiry. <a href="https://www.tbtfw.com/policies/privacy-policy" target="_blank" rel="noopener">Privacy</a></p>
+  <div class="ts" id="ts-sell"></div>
+  <button type="submit" class="btn" id="sell-submit">Send my car</button>
+  <p class="err" id="err-sell" role="alert"></p>
+ </form>
+</section>
+
+<section id="s-sell2" class="screen" hidden aria-label="Sell, tell us more">
+ <div class="rail"><button type="button" class="back" data-back>Back</button><span id="rail-sell2">SELL // <b>2 OF 2</b></span></div>
+ <p class="spec" id="sell2-spec"></p>
+ <form id="f-details" action="#" method="post" novalidate>
+  <h1>Tell us more</h1>
+  <p class="lede">Optional. Saves a phone call.</p>
+  <details class="more" open><summary>Tell us more <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="#ffffff" stroke-width="1.5"><path d="M2 5l5 5 5-5"/></svg></summary>
+   <div class="inner">
+    <span class="lbl" id="l-intent">Intent</span>
+    <div class="chips" role="radiogroup" aria-labelledby="l-intent">
+     <label class="chip" for="in1"><input type="radio" id="in1" name="intent" value="Sell outright"><span>Sell outright</span></label>
+     <label class="chip" for="in2"><input type="radio" id="in2" name="intent" value="Consign"><span>Consign</span></label>
+     <label class="chip" for="in3"><input type="radio" id="in3" name="intent" value="Trade"><span>Trade</span></label>
+    </div>
+    <span class="lbl" id="l-title">Title</span>
+    <div class="chips" role="radiogroup" aria-labelledby="l-title">
+     <label class="chip" for="ti1"><input type="radio" id="ti1" name="title_status" value="Clean"><span>Clean</span></label>
+     <label class="chip" for="ti2"><input type="radio" id="ti2" name="title_status" value="Lien"><span>Lien</span></label>
+     <label class="chip" for="ti3"><input type="radio" id="ti3" name="title_status" value="Salvage or rebuilt"><span>Salvage or rebuilt</span></label>
+    </div>
+    <div id="lien-wrap" hidden>
+     <div class="field money"><input type="text" id="payoff_estimate" name="payoff_estimate" placeholder=" " inputmode="numeric"><label for="payoff_estimate">Payoff estimate</label></div>
+     <div class="field"><input type="text" id="lienholder" name="lienholder" placeholder=" "><label for="lienholder">Lienholder</label></div>
+    </div>
+    <label class="toggle" for="original_owner"><input type="checkbox" id="original_owner" name="original_owner" value="true"><span class="box"></span><span>I am the original owner</span></label>
+    <div class="field"><input type="text" id="owned_since" name="owned_since" placeholder=" " inputmode="numeric" maxlength="4"><label for="owned_since">Owned since (year)</label></div>
+    <label class="toggle" for="has_records"><input type="checkbox" id="has_records" name="has_records" value="true"><span class="box"></span><span>I have service records</span></label>
+    <div class="addrow" id="records-wrap" hidden><label for="records">Add records</label><input type="file" id="records" name="records[]" multiple accept="image/*,application/pdf"><span class="cnt" id="records-count">Up to 5, PDF or photo</span></div>
+    <div class="field"><textarea id="mods_text" name="mods_text" placeholder=" " rows="2"></textarea><label for="mods_text">Modifications</label><span class="hint">Novitec exhaust, PPF, Anrky wheels</span></div>
+    <span class="lbl" id="l-cond">Condition</span>
+    <div class="chips" role="radiogroup" aria-labelledby="l-cond">
+     <label class="chip" for="co1"><input type="radio" id="co1" name="condition" value="Concours"><span>Concours</span></label>
+     <label class="chip" for="co2"><input type="radio" id="co2" name="condition" value="Excellent"><span>Excellent</span></label>
+     <label class="chip" for="co3"><input type="radio" id="co3" name="condition" value="Driver"><span>Driver</span></label>
+     <label class="chip" for="co4"><input type="radio" id="co4" name="condition" value="Needs work"><span>Needs work</span></label>
+    </div>
+    <div class="field"><input type="text" id="sell-zip" name="zip" placeholder=" " inputmode="numeric" maxlength="5" autocomplete="postal-code"><label for="sell-zip">ZIP</label></div>
+    <span class="lbl" id="l-timeline-sell">Timeline</span>
+    <div class="chips" role="radiogroup" aria-labelledby="l-timeline-sell">
+     <label class="chip" for="sell-tl1"><input type="radio" id="sell-tl1" name="timeline" value="This week"><span>This week</span></label>
+     <label class="chip" for="sell-tl2"><input type="radio" id="sell-tl2" name="timeline" value="30 days"><span>30 days</span></label>
+     <label class="chip" for="sell-tl3"><input type="radio" id="sell-tl3" name="timeline" value="Just curious"><span>Just curious</span></label>
+    </div>
+    <span class="lbl" id="l-pref-sell">Reach me by</span>
+    <div class="chips" role="radiogroup" aria-labelledby="l-pref-sell">
+     <label class="chip" for="sell-cp1"><input type="radio" id="sell-cp1" name="contact_pref" value="Text"><span>Text</span></label>
+     <label class="chip" for="sell-cp2"><input type="radio" id="sell-cp2" name="contact_pref" value="Call"><span>Call</span></label>
+     <label class="chip" for="sell-cp3"><input type="radio" id="sell-cp3" name="contact_pref" value="Email"><span>Email</span></label>
+    </div>
+    <div class="field"><input type="text" id="sell-best_time" name="best_time" placeholder=" "><label for="sell-best_time">Best time</label></div>
+   </div>
+  </details>
+  <button type="submit" class="btn" id="details-submit">Save details</button>
+  <button type="button" class="btn2" id="details-skip">Skip</button>
+  <p class="err" id="err-details" role="alert"></p>
+ </form>
+</section>
+
+<section id="s-done" class="screen done" hidden aria-label="Sent">
+ <div class="rail"><span></span><span id="rail-done">SENT</span></div>
+ <div class="photo" id="done-photo"></div>
+ <div class="ref" id="done-ref">TB-</div>
+ <div class="spec" id="done-spec"></div>
+ <p>A salesperson will respond within the hour.</p>
+ <p class="spec" id="done-note"></p>
+ <a class="home" href="https://www.tbtfw.com">Back to TBTFW.com</a>
+</section>
+
+</main>
+<script>
+(function(){
+'use strict';
+var API = 'https://qymkzfhdneukffeilrhx.supabase.co/functions/v1/lead-intake';
+var TURNSTILE_SITE_KEY = '';
+var SOURCES = ['bio','story','dm','site'];
+var SLOT_ORDER = ['front34','rear34','interior','odometer','vin_plate','sticker'];
+var SLOT_NAMES = {front34:'Front three quarter',rear34:'Rear three quarter',interior:'Interior',odometer:'Odometer',vin_plate:'VIN plate',sticker:'Window sticker or build sheet'};
+var MAX_PHOTOS = 20, MIN_PHOTOS = 3, MAX_RECORDS = 5;
+var MAKE_FIX = {MCLAREN:'McLaren',BMW:'BMW','ROLLS-ROYCE':'Rolls-Royce','ROLLS ROYCE':'Rolls-Royce','MERCEDES-BENZ':'Mercedes-Benz','ASTON MARTIN':'Aston Martin','LAND ROVER':'Land Rover','ALFA ROMEO':'Alfa Romeo'};
+
+var $ = function(id){ return document.getElementById(id); };
+var reduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+var src = (new URLSearchParams(location.search).get('src') || '').toLowerCase();
+var SOURCE = SOURCES.indexOf(src) >= 0 ? src : 'direct';
+$('buy-source').value = SOURCE; $('sell-source').value = SOURCE;
+
+var state = { mode: 'buy', screen: 'choice', inv: [], tradeGroupId: '', buy: null, sell: null, photos: {}, records: [], decoded: null, vinOk: false, busy: false, tokens: {} };
+
+function esc(s){ return String(s === null || s === undefined ? '' : s).replace(/[&<>"']/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
+function money(n){ n = Number(n); return isFinite(n) ? '$' + Math.round(n).toLocaleString('en-US') : ''; }
+function miles(n){ n = Number(n); return isFinite(n) ? Math.round(n).toLocaleString('en-US') + ' mi' : ''; }
+function digits(s){ return String(s || '').replace(/[^0-9]/g, ''); }
+function titleCase(s){ return String(s).toLowerCase().split(/(\s+|-)/).map(function(w){ return w.length ? w.charAt(0).toUpperCase() + w.slice(1) : w; }).join(''); }
+function fixMake(raw){ if (!raw) return ''; var up = String(raw).trim().toUpperCase(); return MAKE_FIX[up] || titleCase(raw.trim()); }
+function identityLine(o){ return [o.year, o.model, o.trim].filter(function(x){ return x !== null && x !== undefined && String(x).trim() !== ''; }).map(String).join(' // '); }
+
+/* ---- screens and history ---- */
+var SCREENS = { choice:'s-choice', buy:'s-buy', sell1:'s-sell1', sell2:'s-sell2', done:'s-done' };
+function show(name, dir){
+  var cur = $(SCREENS[state.screen]);
+  var nxt = $(SCREENS[name]);
+  if (cur && cur !== nxt) { cur.hidden = true; cur.classList.remove('fwd','bwd'); }
+  nxt.hidden = false;
+  nxt.classList.remove('fwd','bwd');
+  if (!reduced && dir) { void nxt.offsetWidth; nxt.classList.add(dir === 'back' ? 'bwd' : 'fwd'); }
+  state.screen = name;
+  window.scrollTo(0, 0);
+  updateRails();
+}
+function hist(method, st){ try { history[method](st, '', location.href); } catch (e) { /* file:// or restricted in-app browser */ } }
+function go(name){ hist('pushState', { screen: name }); show(name, 'fwd'); }
+window.addEventListener('popstate', function(e){
+  var s = e.state && e.state.screen ? e.state.screen : 'choice';
+  if (state.screen === 'done') { hist('replaceState', { screen: 'choice' }); s = 'choice'; }
+  show(s, 'back');
+});
+hist('replaceState', { screen: 'choice' });
+Array.prototype.forEach.call(document.querySelectorAll('[data-back]'), function(b){ b.addEventListener('click', function(){ if (history.state && history.state.screen && history.state.screen !== 'choice') history.back(); else show('choice', 'back'); }); });
+
+function updateRails(){
+  var m = state.mode;
+  $('rail-buy').innerHTML = m === 'trade' ? 'TRADE // <b>1 OF 3</b>' : 'BUY // <b>1 OF 1</b>';
+  $('rail-sell1').innerHTML = m === 'trade' ? 'TRADE // <b>2 OF 3</b>' : 'SELL // <b>1 OF 2</b>';
+  $('rail-sell2').innerHTML = m === 'trade' ? 'TRADE // <b>3 OF 3</b>' : 'SELL // <b>2 OF 2</b>';
+}
+
+Array.prototype.forEach.call(document.querySelectorAll('[data-go]'), function(b){
+  b.addEventListener('click', function(){
+    var t = b.getAttribute('data-go');
+    state.mode = t;
+    if (t === 'sell') { go('sell1'); }
+    else { $('has_trade').checked = (t === 'trade'); go('buy'); }
+  });
+});
+
+/* ---- checked-state class sync, fallback for browsers without :has() ---- */
+function syncOn(inp){
+  var lab = inp.closest ? inp.closest('label') : null; if (!lab) return;
+  if (inp.type === 'radio') { Array.prototype.forEach.call(document.querySelectorAll('input[name="' + inp.name + '"]'), function(o){ var l = o.closest('label'); if (l) l.classList.toggle('on', o.checked); }); }
+  else lab.classList.toggle('on', inp.checked);
+}
+document.addEventListener('change', function(e){ var t = e.target; if (t && (t.type === 'radio' || t.type === 'checkbox')) syncOn(t); });
+
+/* ---- progress line ---- */
+var prog = $('progress');
+function busy(on){
+  state.busy = on;
+  if (on) { prog.classList.add('on'); prog.style.width = '0'; void prog.offsetWidth; prog.style.width = '85%'; }
+  else { prog.style.width = '100%'; setTimeout(function(){ prog.classList.remove('on'); prog.style.width = '0'; }, 300); }
+}
+
+/* ---- inventory ---- */
+function loadInventory(){
+  fetch(API + '/inventory').then(function(r){ return r.json(); }).then(function(d){
+    state.inv = (d && d.items) ? d.items : [];
+    renderPicker();
+    startShow(state.inv.concat((d && d.past) ? d.past : []));
+  }).catch(function(){ state.inv = []; renderPicker(); });
+}
+
+/* ---- choice-screen slideshow: slow crossfade, current and past inventory ---- */
+var SHOW_EVERY = 12000;
+var deck = { pools: { sell: [], buy: [] }, idx: { sell: 0, buy: 0 }, current: { sell: null, buy: null }, timer: null, tick: 0 };
+function sized(url, w){ return url ? String(url).replace(/_1920\.jpg$/i, '_' + w + '.jpg') : url; }
+function shuffle(a){ for (var i = a.length - 1; i > 0; i--) { var j = Math.floor(Math.random() * (i + 1)); var t = a[i]; a[i] = a[j]; a[j] = t; } return a; }
+function caption(item){ return [item.year, item.model, item.trim].filter(function(x){ return x !== null && x !== undefined && String(x) !== ''; }).join(' // '); }
+function startShow(items){
+  var pool = (items || []).filter(function(i){ return i && i.image_url; });
+  if (!pool.length) return;
+  var hero = pool.slice(0, 2);
+  var rest = pool.slice(2);
+  deck.pools.sell = [hero[0]].concat(shuffle(rest.slice()));
+  deck.pools.buy = [hero[1] || hero[0]].concat(shuffle(rest.slice()));
+  slide('sell'); slide('buy');
+  if (reduced || pool.length < 2) return;
+  var run = function(){ deck.tick++; slide(deck.tick % 2 ? 'sell' : 'buy'); };
+  var start = function(){ if (!deck.timer) deck.timer = setInterval(run, SHOW_EVERY / 2); };
+  var stop = function(){ if (deck.timer) { clearInterval(deck.timer); deck.timer = null; } };
+  start();
+  document.addEventListener('visibilitychange', function(){ if (document.hidden) stop(); else start(); });
+}
+function slide(k){
+  var pool = deck.pools[k]; if (!pool.length) return;
+  var other = k === 'sell' ? 'buy' : 'sell';
+  var item = pool[deck.idx[k] % pool.length]; deck.idx[k]++;
+  if (pool.length > 1 && deck.current[other] && deck.current[other].stock_id === item.stock_id) { item = pool[deck.idx[k] % pool.length]; deck.idx[k]++; }
+  var a = $('panel-' + k + '-a'), b = $('panel-' + k + '-b');
+  var incoming = a.classList.contains('ready') ? b : a; var outgoing = incoming === a ? b : a;
+  var w = window.innerWidth > 720 ? 1920 : 1280;
+  var src = sized(item.image_url, w);
+  var pre = new Image();
+  pre.onload = function(){
+    incoming.src = src; incoming.alt = [item.year, item.make, item.model].filter(Boolean).join(' ');
+    incoming.classList.add('ready');
+    deck.current[k] = item;
+    $('panel-' + k + '-cap').textContent = caption(item);
+    setTimeout(function(){ outgoing.classList.remove('ready'); }, 1300);
+  };
+  pre.onerror = function(){ if (src !== item.image_url) { src = item.image_url; pre.src = src; } };
+  pre.src = src;
+}
+function renderPicker(){
+  var p = $('picker'); var sel = $('make_filter');
+  var makes = {}; state.inv.forEach(function(i){ if (i.make) makes[i.make] = 1; });
+  var opts = '<option value="">All makes</option>';
+  Object.keys(makes).sort().forEach(function(m){ opts += '<option value="' + esc(m) + '">' + esc(m) + '</option>'; });
+  sel.innerHTML = opts;
+  var h = '';
+  state.inv.forEach(function(i){
+    var id = 'car-' + esc(i.stock_id);
+    var alt = esc([i.year, i.make, i.model, i.trim].filter(Boolean).join(' '));
+    h += '<label class="car" for="' + id + '" data-make="' + esc(i.make) + '">';
+    h += '<input type="radio" name="stock_id" id="' + id + '" value="' + esc(i.stock_id) + '" data-vin="' + esc(i.vin) + '">';
+    h += '<span class="ph">' + (i.image_url ? '<img src="' + esc(sized(i.image_url, 800)) + '" data-full="' + esc(i.image_url) + '" alt="' + alt + '" loading="lazy" onerror="this.onerror=null;this.src=this.getAttribute(\'data-full\')">' : '') + '</span>';
+    h += '<span class="id">' + esc(i.year) + ' // ' + esc(i.model) + (i.trim ? ' // ' + esc(i.trim) : '') + '</span>';
+    h += '<span class="pr">' + esc(money(i.price)) + (i.mileage !== null && i.mileage !== undefined ? ' // ' + esc(miles(i.mileage)) : '') + '</span>';
+    h += '</label>';
+  });
+  p.innerHTML = h;
+  $('picker-empty').hidden = state.inv.length > 0;
+  p.addEventListener('change', function(){ $('wanted-wrap').hidden = true; });
+}
+$('make_filter').addEventListener('change', function(){
+  var v = this.value;
+  Array.prototype.forEach.call(document.querySelectorAll('#picker .car'), function(c){ c.classList.toggle('hide', !!v && c.getAttribute('data-make') !== v); });
+});
+$('stock-other').addEventListener('change', function(){ $('wanted-wrap').hidden = !this.checked; if (this.checked) $('wanted_text').focus(); });
+
+/* ---- turnstile ---- */
+function loadTurnstile(){
+  if (!TURNSTILE_SITE_KEY) return;
+  window.tbtfwTs = function(){
+    ['buy','sell'].forEach(function(k){
+      try {
+        window.turnstile.render('#ts-' + k, { sitekey: TURNSTILE_SITE_KEY, size: 'invisible', execution: 'execute', callback: function(t){ state.tokens[k] = t; }, 'error-callback': function(){ state.tokens[k] = ''; }, 'expired-callback': function(){ state.tokens[k] = ''; } });
+      } catch (e) { /* no widget, server rate limit still applies */ }
+    });
+  };
+  var s = document.createElement('script');
+  s.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js?onload=tbtfwTs&render=explicit';
+  s.async = true; s.defer = true;
+  document.head.appendChild(s);
+}
+function getToken(k){
+  return new Promise(function(res){
+    if (!TURNSTILE_SITE_KEY || !window.turnstile) return res('');
+    if (state.tokens[k]) return res(state.tokens[k]);
+    var done = false;
+    var t0 = Date.now();
+    try { window.turnstile.execute('#ts-' + k, { callback: function(t){ state.tokens[k] = t; if (!done) { done = true; res(t); } } }); } catch (e) { return res(''); }
+    (function wait(){ if (done) return; if (state.tokens[k]) { done = true; return res(state.tokens[k]); } if (Date.now() - t0 > 8000) { done = true; return res(''); } setTimeout(wait, 150); })();
+  });
+}
+
+/* ---- api ---- */
+function post(path, body){
+  return fetch(API + path, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
+    .then(function(r){ return r.json().then(function(j){ j._status = r.status; return j; }); });
+}
+function put(url, blob, type){
+  return fetch(url, { method: 'PUT', headers: { 'Content-Type': type || 'image/jpeg', 'x-upsert': 'true' }, body: blob }).then(function(r){ if (!r.ok) throw new Error('upload ' + r.status); return true; });
+}
+function fail(id, msg){ $(id).textContent = msg || 'Something went wrong. Check your connection and try again.'; }
+function clearFail(id){ $(id).textContent = ''; }
+
+/* ---- buy ---- */
+$('f-buy').addEventListener('submit', function(e){
+  e.preventDefault();
+  if (state.busy) return;
+  clearFail('err-buy');
+  var f = e.target;
+  var stock = f.querySelector('input[name="stock_id"]:checked');
+  var stockId = stock && stock.value !== 'other' ? stock.value : '';
+  var wanted = $('wanted_text').value.trim();
+  if (!stockId && !wanted) { fail('err-buy', 'Pick a car, or choose "something not listed" and tell us what you want.'); return; }
+  if (!$('buy-full_name').value.trim()) { fail('err-buy', 'Enter your name.'); $('buy-full_name').focus(); return; }
+  if (digits($('buy-phone').value).length < 10) { fail('err-buy', 'Enter a phone number with area code.'); $('buy-phone').focus(); return; }
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test($('buy-email').value.trim())) { fail('err-buy', 'Enter a valid email address.'); $('buy-email').focus(); return; }
+  if (!$('buy-consent').checked) { fail('err-buy', 'Check the agreement box to send this.'); return; }
+  var tl = f.querySelector('input[name="timeline"]:checked'); var cp = f.querySelector('input[name="contact_pref"]:checked');
+  var body = {
+    kind: 'buy', source: SOURCE, website: $('buy-website').value,
+    stock_id: stockId, wanted_text: stockId ? '' : wanted,
+    full_name: $('buy-full_name').value.trim(), phone: $('buy-phone').value.trim(), email: $('buy-email').value.trim(),
+    message: $('buy-message').value.trim(), has_trade: $('has_trade').checked, timeline: tl ? tl.value : '',
+    wants_financing: $('wants_financing').checked, zip: digits($('buy-zip').value), contact_pref: cp ? cp.value : '', best_time: $('buy-best_time').value.trim(),
+    consent: true
+  };
+  var btn = $('buy-submit'); btn.disabled = true; busy(true);
+  getToken('buy').then(function(t){ if (t) body.turnstile_token = t; return post('/lead', body); }).then(function(r){
+    if (!r.ok) throw new Error(r.message || 'Could not send.');
+    state.buy = { ref: r.ref, id: r.lead_id, identity: r.identity || {}, stock: stockId, wanted: wanted, photo: null };
+    var inv = state.inv.filter(function(i){ return i.stock_id === stockId; })[0];
+    if (inv) state.buy.photo = sized(inv.image_url, 1280);
+    busy(false); btn.disabled = false;
+    if (body.has_trade) {
+      state.mode = 'trade';
+      state.tradeGroupId = r.trade_group_id || '';
+      $('sell-tg').value = state.tradeGroupId;
+      $('sell-full_name').value = body.full_name; $('sell-phone').value = body.phone; $('sell-email').value = body.email; $('sell-consent').checked = true;
+      go('sell1');
+    } else {
+      finish(state.buy.ref, state.buy.photo, identityLine(state.buy.identity) || (wanted ? 'Wanted // ' + wanted : ''), '');
+    }
+  }).catch(function(err){ busy(false); btn.disabled = false; fail('err-buy', err && err.message ? err.message : ''); });
+});
+
+/* ---- vin decode, the one bold moment ---- */
+var VIN_TRANS = {A:1,B:2,C:3,D:4,E:5,F:6,G:7,H:8,J:1,K:2,L:3,M:4,N:5,P:7,R:9,S:2,T:3,U:4,V:5,W:6,X:7,Y:8,Z:9};
+var VIN_W = [8,7,6,5,4,3,2,10,0,9,8,7,6,5,4,3,2];
+function vinValid(v){
+  if (!/^[A-HJ-NPR-Z0-9]{17}$/.test(v)) return false;
+  var sum = 0;
+  for (var i = 0; i < 17; i++) { var c = v.charAt(i); var val = /[0-9]/.test(c) ? Number(c) : VIN_TRANS[c]; sum += val * VIN_W[i]; }
+  var r = sum % 11; var chk = r === 10 ? 'X' : String(r);
+  return v.charAt(8) === chk;
+}
+var vinEl = $('vin'), idEl = $('identity'), wrap = $('vinwrap'), lastDecoded = '';
+function setIdentity(d){
+  state.decoded = d;
+  $('vin-year').value = d && d.year ? d.year : ''; $('vin-make').value = d && d.make ? d.make : '';
+  $('vin-model').value = d && d.model ? d.model : ''; $('vin-trim').value = d && d.trim ? d.trim : '';
+}
+function resetIdentity(){ idEl.innerHTML = ''; wrap.classList.remove('decoded'); setIdentity(null); lastDecoded = ''; }
+function assemble(d){
+  var words = [[d.year,'y'],[d.make,'m'],[d.model,'o'],[d.trim,'t']].filter(function(w){ return w[0]; });
+  var h = '';
+  words.forEach(function(w, i){ h += '<span class="w ' + w[1] + '" style="animation-delay:' + (i * 90) + 'ms">' + esc(w[0]) + '</span>'; });
+  h += '<span class="rule"></span><span class="status"></span>';
+  idEl.innerHTML = h;
+  void idEl.offsetWidth;
+  Array.prototype.forEach.call(idEl.querySelectorAll('.w,.rule'), function(el){ el.classList.add('in'); });
+}
+vinEl.addEventListener('input', function(){
+  var v = vinEl.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 17);
+  if (v !== vinEl.value) vinEl.value = v;
+  $('vin-fe').textContent = ''; vinEl.removeAttribute('aria-invalid'); state.vinOk = false;
+  if (v.length < 17) { if (lastDecoded) resetIdentity(); return; }
+  if (!vinValid(v)) { resetIdentity(); vinEl.setAttribute('aria-invalid', 'true'); $('vin-fe').textContent = 'That VIN does not check out. Re-type it from the door jamb or the title.'; return; }
+  state.vinOk = true;
+  if (v === lastDecoded) return;
+  lastDecoded = v;
+  wrap.classList.add('decoded');
+  idEl.innerHTML = '<span class="status">Reading the VIN</span>';
+  fetch('https://vpic.nhtsa.dot.gov/api/vehicles/DecodeVinValues/' + v + '?format=json').then(function(r){ return r.json(); }).then(function(j){
+    if (vinEl.value !== v) return;
+    var row = j && j.Results && j.Results[0] ? j.Results[0] : {};
+    var d = { year: digits(row.ModelYear) || '', make: fixMake(row.Make || ''), model: (row.Model || '').trim(), trim: (row.Trim || row.Series || '').trim() };
+    setIdentity(d);
+    if (d.year || d.make || d.model) assemble(d);
+    else idEl.innerHTML = '<span class="status">VIN accepted. We will read the build on our side.</span>';
+  }).catch(function(){ if (vinEl.value === v) idEl.innerHTML = '<span class="status">VIN accepted. We will read the build on our side.</span>'; });
+});
+vinEl.addEventListener('blur', function(){ if (vinEl.value.length && vinEl.value.length < 17) { vinEl.setAttribute('aria-invalid', 'true'); $('vin-fe').textContent = 'A VIN is 17 characters.'; } });
+$('mileage').addEventListener('blur', function(){ var d = digits(this.value); this.value = d ? Number(d).toLocaleString('en-US') : ''; });
+$('asking_price').addEventListener('blur', function(){ var d = digits(this.value); this.value = d ? Number(d).toLocaleString('en-US') : ''; });
+$('payoff_estimate').addEventListener('blur', function(){ var d = digits(this.value); this.value = d ? Number(d).toLocaleString('en-US') : ''; });
+
+/* ---- photos ---- */
+function compress(file){
+  return new Promise(function(res){
+    if (!/^image\//.test(file.type)) return res({ blob: file, type: file.type || 'application/octet-stream', w: null, h: null });
+    var url = URL.createObjectURL(file); var img = new Image();
+    img.onload = function(){
+      var w = img.naturalWidth, h = img.naturalHeight, max = 1600, sc = Math.min(1, max / Math.max(w, h));
+      var cw = Math.max(1, Math.round(w * sc)), ch = Math.max(1, Math.round(h * sc));
+      try {
+        var c = document.createElement('canvas'); c.width = cw; c.height = ch;
+        c.getContext('2d').drawImage(img, 0, 0, cw, ch);
+        c.toBlob(function(b){ URL.revokeObjectURL(url); res({ blob: b || file, type: b ? 'image/jpeg' : (file.type || 'image/jpeg'), w: cw, h: ch }); }, 'image/jpeg', 0.82);
+      } catch (e) { URL.revokeObjectURL(url); res({ blob: file, type: file.type || 'image/jpeg', w: w, h: h }); }
+    };
+    img.onerror = function(){ URL.revokeObjectURL(url); res({ blob: file, type: file.type || 'image/jpeg', w: null, h: null }); };
+    img.src = url;
+  });
+}
+function photoCount(){ return Object.keys(state.photos).length; }
+function updateCount(){
+  var n = photoCount();
+  $('photo-count').textContent = n < MIN_PHOTOS ? n + ' of ' + MIN_PHOTOS + ' required' : n + (n === 1 ? ' photo' : ' photos') + (n >= MAX_PHOTOS ? ', maximum' : '');
+}
+function nextExtraSlot(){ for (var i = 1; i <= 14; i++) { if (!state.photos['extra_' + i]) return 'extra_' + i; } return null; }
+function placeFile(slot, file){
+  if (!slot) return Promise.resolve();
+  return compress(file).then(function(c){
+    if (state.photos[slot] && state.photos[slot].url) URL.revokeObjectURL(state.photos[slot].url);
+    var url = URL.createObjectURL(c.blob);
+    state.photos[slot] = { blob: c.blob, type: c.type, w: c.w, h: c.h, url: url };
+    var lab = document.querySelector('.slot input[data-slot="' + slot + '"]');
+    if (lab) {
+      var li = lab.parentNode; var im = li.querySelector('img'); im.classList.remove('ready'); im.onload = function(){ im.classList.add('ready'); }; im.src = url; li.classList.add('filled');
+    } else {
+      var ex = $('extras'); var t = document.createElement('img'); t.alt = ''; t.src = url; t.setAttribute('data-slot', slot); ex.appendChild(t);
+    }
+    updateCount();
+  });
+}
+Array.prototype.forEach.call(document.querySelectorAll('.slot input[type="file"]'), function(inp){
+  inp.addEventListener('change', function(){ if (inp.files && inp.files[0]) placeFile(inp.getAttribute('data-slot'), inp.files[0]); });
+});
+$('photos').addEventListener('change', function(){
+  var files = Array.prototype.slice.call(this.files || []);
+  var chain = Promise.resolve();
+  files.forEach(function(f){
+    chain = chain.then(function(){
+      if (photoCount() >= MAX_PHOTOS) return;
+      var slot = null;
+      for (var i = 0; i < SLOT_ORDER.length; i++) { if (!state.photos[SLOT_ORDER[i]]) { slot = SLOT_ORDER[i]; break; } }
+      if (!slot) slot = nextExtraSlot();
+      return placeFile(slot, f);
+    });
+  });
+  var self = this; chain.then(function(){ self.value = ''; });
+});
+
+/* ---- sell screen one ---- */
+$('f-sell').addEventListener('submit', function(e){
+  e.preventDefault();
+  if (state.busy) return;
+  clearFail('err-sell');
+  var vin = vinEl.value.toUpperCase();
+  if (state.sell && state.sell.id && state.sell.vin === vin) { go('sell2'); return; }
+  if (!vinValid(vin)) { fail('err-sell', 'Enter the full 17 character VIN. It must pass the check.'); vinEl.focus(); return; }
+  var mi = digits($('mileage').value); if (!mi) { fail('err-sell', 'Enter the mileage.'); $('mileage').focus(); return; }
+  var ask = digits($('asking_price').value); if (!ask) { fail('err-sell', 'Enter what you are looking to get.'); $('asking_price').focus(); return; }
+  if (photoCount() < MIN_PHOTOS) { fail('err-sell', 'Add at least three photos.'); return; }
+  if (!$('sell-full_name').value.trim()) { fail('err-sell', 'Enter your name.'); $('sell-full_name').focus(); return; }
+  if (digits($('sell-phone').value).length < 10) { fail('err-sell', 'Enter a phone number with area code.'); $('sell-phone').focus(); return; }
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test($('sell-email').value.trim())) { fail('err-sell', 'Enter a valid email address.'); $('sell-email').focus(); return; }
+  if (!$('sell-consent').checked) { fail('err-sell', 'Check the agreement box to send this.'); return; }
+  var slots = Object.keys(state.photos);
+  var d = state.decoded || {};
+  var body = {
+    kind: 'sell', source: SOURCE, website: $('sell-website').value, trade_group_id: state.tradeGroupId || '',
+    vin: vin, year: d.year || '', make: d.make || '', model: d.model || '', trim: d.trim || '',
+    mileage: mi, asking_price: ask,
+    photos: slots.map(function(s){ return { slot: s, type: state.photos[s].type }; }),
+    full_name: $('sell-full_name').value.trim(), phone: $('sell-phone').value.trim(), email: $('sell-email').value.trim(),
+    consent: true
+  };
+  var btn = $('sell-submit'); btn.disabled = true; busy(true);
+  var created = null;
+  getToken('sell').then(function(t){ if (t) body.turnstile_token = t; return post('/lead', body); }).then(function(r){
+    if (!r.ok) throw new Error(r.message || 'Could not send.');
+    created = r;
+    state.sell = { ref: r.ref, id: r.lead_id, identity: r.identity || d, mileage: mi, asking: ask, vin: vin };
+    var urls = r.upload_urls || [];
+    var dims = {};
+    var jobs = urls.map(function(u){
+      var p = state.photos[u.slot]; if (!p) return Promise.resolve();
+      if (p.w && p.h) dims[u.slot] = [p.w, p.h];
+      return put(u.url, p.blob, u.content_type || p.type);
+    });
+    return Promise.all(jobs).then(function(){ return post('/lead/' + r.lead_id + '/complete', { dims: dims }); });
+  }).then(function(c){
+    busy(false); btn.disabled = false;
+    if (!c || !c.ok) { $('sell2-spec').textContent = identityLine(state.sell.identity) + ' // ' + miles(mi); go('sell2'); return; }
+    state.sell.photoCount = c.photo_count;
+    $('sell2-spec').textContent = identityLine(state.sell.identity) + ' // ' + miles(mi);
+    go('sell2');
+  }).catch(function(err){
+    busy(false); btn.disabled = false;
+    if (created && created.ok) { $('sell2-spec').textContent = identityLine(state.sell.identity) + ' // ' + miles(mi); go('sell2'); return; }
+    fail('err-sell', err && err.message ? err.message : '');
+  });
+});
+
+/* ---- sell screen two ---- */
+Array.prototype.forEach.call(document.querySelectorAll('input[name="title_status"]'), function(r){ r.addEventListener('change', function(){ $('lien-wrap').hidden = r.value !== 'Lien'; }); });
+$('has_records').addEventListener('change', function(){ $('records-wrap').hidden = !this.checked; });
+$('records').addEventListener('change', function(){
+  state.records = Array.prototype.slice.call(this.files || []).slice(0, MAX_RECORDS);
+  $('records-count').textContent = state.records.length ? state.records.length + (state.records.length === 1 ? ' file' : ' files') : 'Up to 5, PDF or photo';
+});
+function sellDone(note){
+  var front = state.photos.front34 || state.photos[Object.keys(state.photos)[0]];
+  var line = identityLine(state.sell.identity) + ' // ' + miles(state.sell.mileage);
+  finish(state.sell.ref, front ? front.url : null, line, note || '');
+}
+$('details-skip').addEventListener('click', function(){ if (!state.busy) sellDone(''); });
+$('f-details').addEventListener('submit', function(e){
+  e.preventDefault();
+  if (state.busy || !state.sell) return;
+  clearFail('err-details');
+  var f = e.target;
+  var pick = function(n){ var el = f.querySelector('input[name="' + n + '"]:checked'); return el ? el.value : ''; };
+  var body = {
+    intent: pick('intent'), title_status: pick('title_status'), payoff_estimate: digits($('payoff_estimate').value), lienholder: $('lienholder').value.trim(),
+    original_owner: $('original_owner').checked, owned_since: digits($('owned_since').value), has_records: $('has_records').checked,
+    mods_text: $('mods_text').value.trim(), condition: pick('condition'), zip: digits($('sell-zip').value), timeline: pick('timeline'), contact_pref: pick('contact_pref'), best_time: $('sell-best_time').value.trim()
+  };
+  if (state.records.length) body.records = state.records.map(function(r){ return { type: r.type || 'application/pdf' }; });
+  var btn = $('details-submit'); btn.disabled = true; busy(true);
+  post('/lead/' + state.sell.id + '/details', body).then(function(r){
+    var urls = (r && r.upload_urls) || [];
+    if (!urls.length) return null;
+    var jobs = urls.map(function(u, i){ var file = state.records[i]; return file ? put(u.url, file, u.content_type || file.type) : Promise.resolve(); });
+    return Promise.all(jobs).then(function(){ return post('/lead/' + state.sell.id + '/complete', {}); });
+  }).then(function(){ busy(false); btn.disabled = false; sellDone(''); })
+  .catch(function(){ busy(false); btn.disabled = false; sellDone(''); });
+});
+
+/* ---- confirmation ---- */
+function finish(ref, photo, spec, note){
+  $('done-ref').textContent = ref || '';
+  $('done-spec').textContent = spec || '';
+  var ph = $('done-photo'); ph.innerHTML = '';
+  if (photo) { var im = document.createElement('img'); im.alt = ''; im.src = photo; ph.appendChild(im); }
+  var n = note || '';
+  if (state.mode === 'trade' && state.buy && state.buy.ref && state.sell) n = 'Paired with ' + state.buy.ref + ' for the car you asked about.';
+  $('done-note').textContent = n;
+  hist('pushState', { screen: 'done' });
+  show('done', 'fwd');
+}
+
+loadInventory();
+loadTurnstile();
+})();
+</script>
+</body>
+</html>
