@@ -76,10 +76,10 @@
 </script>
 
 <Rail label={rail.label} step={rail.step} onback={() => back('sell2')} />
-<p class="num mb-4 text-sm text-mute">{spec}</p>
 <form onsubmit={submit} novalidate>
-	<h1 class="disp mt-2 mb-1 text-[22px] leading-tight md:text-[26px]">Tell us more</h1>
-	<p class="mb-6 text-[15px] text-mute">Optional. Saves a phone call.</p>
+	<h1 class="disp mt-3 mb-3 text-[32px] md:text-[42px]">Tell us more</h1>
+	<p class="mb-1 text-[14px] text-mute">Optional. Saves a phone call.</p>
+	{#if spec}<p class="eyebrow mb-8 text-bone">{spec}</p>{:else}<div class="mb-8"></div>{/if}
 
 	<ChipGroup name="intent" label="Intent" options={['Sell outright', 'Consign', 'Trade']} bind:value={f.intent} />
 	<ChipGroup name="title_status" label="Title" options={['Clean', 'Lien', 'Salvage or rebuilt']} bind:value={f.title_status} />
@@ -94,7 +94,7 @@
 		<div class="addrow">
 			<label for="records">Add records</label>
 			<input type="file" id="records" multiple accept="image/*,application/pdf" onchange={onRecords} />
-			<span class="num text-[13px] text-mute">{recordsLabel}</span>
+			<span class="num text-[12.5px] tracking-[.02em] text-mute">{recordsLabel}</span>
 		</div>
 	{/if}
 	<FloatField textarea id="mods_text" label="Modifications" rows={2} hint="Novitec exhaust, PPF, Anrky wheels" bind:value={f.mods_text} />
@@ -124,11 +124,17 @@
 		height: 1px;
 	}
 	.addrow label {
-		font-size: 14px;
+		font-size: 13px;
+		letter-spacing: 0.04em;
 		text-decoration: underline;
-		text-underline-offset: 4px;
+		text-underline-offset: 5px;
+		text-decoration-color: var(--hair-strong);
 		cursor: pointer;
 		padding: 10px 0;
+		transition: text-decoration-color 0.2s;
+	}
+	.addrow label:hover {
+		text-decoration-color: var(--bone);
 	}
 	.addrow:has(input:focus-visible) label {
 		outline: 1px solid var(--bone);

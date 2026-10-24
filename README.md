@@ -3,7 +3,10 @@
 The customer intake portal (Buy / Sell / Trade) and the CRM behind it, for TBTFW in Beverly Hills.
 
 - **Live:** https://tbtfwsourcing.github.io/tbtfw-portal/ (GitHub Pages, deployed from `main` by Actions)
-- **CRM:** `leads.html?k=PORTAL_KEY` on the same host. The key lives in Supabase Vault and your bookmark, nowhere else.
+- **CRM:** `leads.html` on the same host. Sign in with your @tbtfw.com email: a six-digit code arrives by email
+  (Supabase Auth, no password). `lead-crm` only admits sessions on that domain (`CRM_ALLOWED_DOMAIN`, or an
+  explicit `CRM_ALLOWED_EMAILS` list) and records the signed-in email on every lead event. The old
+  `?k=PORTAL_KEY` bookmark still works until `CRM_LEGACY_KEY=off` is set on the function.
 - **Backend:** Supabase project `qymkzfhdneukffeilrhx` — Edge Functions, Postgres, pg_cron, Vault, Storage.
 - **Docs:** the "AI Automotive Assistant" Claude project (build handoffs, design contract, ledger).
 
@@ -16,7 +19,7 @@ Every page is static HTML that talks to the Edge Functions from the browser. The
 ## Layout
 
     src/
-      app.css                     design tokens (black / white / hairline / bone) mapped onto shadcn's variables
+      app.css                     design tokens (warm black / ivory / hairline / bone) mapped onto shadcn's variables
       app.html                    document shell
       routes/
         +page.svelte              the portal: choice → buy | sell (2 steps) → sent
@@ -69,7 +72,16 @@ One-time repo setting: **Settings → Pages → Build and deployment → Source:
   the only ways a draft leaves the queue.
 - The CRM reads its key from `?k=` at runtime and never stores it.
 - Keep the design tokens in `app.css`. Components take their colour from `bg-foreground`, `text-mute`,
-  `border-hair`, `text-bone` and friends, not from literal hex values.
+  `border-hair`, `text-bone` and friends, not from literal hex values. The palette matches tbtfw.com:
+  black ground, soft white type, neutral hairlines, one warm bone accent.
+- Type follows tbtfw.com: an extended grotesk for display, a grotesk for everything else. `disp` is
+  Archivo at 118% width for headlines and the VIN identity; `disp-sm` is the same face at 108% for car
+  names in cards and rows; `brand` is the 125% bold cut for the wordmark; `eyebrow`, `cta` and
+  `section-head` (short bone rule + label) are Inter, tracked uppercase. Meta rows use `dots`.
+- The house look lives inside the shadcn primitives in `lib/components/ui`, so reach for their variants
+  before writing classes: `Button variant="house" | "hairline" | "quiet"` with `size="cta" | "house" |
+  "house-sm"`, `Badge variant="solid" | "dim" | "accent"`, and `Input`, `Textarea`, `Checkbox`, `Card`,
+  `Select`, `Skeleton` are square and hairline by default.
 - Before you ship a visual change, look at it at 390px wide. Most leads come from a phone.
 
 ## Footer and share card
@@ -83,7 +95,7 @@ One-time repo setting: **Settings → Pages → Build and deployment → Source:
     ms-auth/            Microsoft sign-in for garett@tbtfw.com (source included)
     lead-intake/        intake API, dedupe, Turnstile, photo uploads
     lead-enrich/        every 2 min: grading, voice drafts, follow-ups, replies
-    lead-crm/           backend for the CRM; Graph email send (source included, v1.3)
+    lead-crm/           backend for the CRM; Graph email send, Supabase Auth gate (source included, v1.4)
     lead-inbox/         odd minutes: polls the Outlook inbox for replies
     inventory-sync/     hourly mirror of tbtfw.com inventory
     spec-inference/     Haiku grader, shared with the board; lead mode

@@ -69,10 +69,13 @@ export interface Identity {
 	trim?: Maybe;
 }
 
-// "2022 // Chiron // Super Sport" — the portal's car line.
+// The portal's quiet separator, a spaced middle dot.
+export const SEP = ' \u00B7 ';
+
+// "2022 · Chiron · Super Sport" — the portal's car line.
 export function identityLine(o: Identity | null | undefined): string {
 	if (!o) return '';
-	return [o.year, o.model, o.trim].filter(present).map(String).join(' // ');
+	return [o.year, o.model, o.trim].filter(present).map(String).join(SEP);
 }
 
 // "2022 Chiron Super Sport" — the CRM's plainer form, falling back to make.

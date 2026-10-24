@@ -5,6 +5,12 @@ export const CRM_API = 'https://qymkzfhdneukffeilrhx.supabase.co/functions/v1/le
 // Where inventory photos are served from; the portal preconnects to it.
 export const IMAGE_CDN = 'https://automanager.blob.core.windows.net';
 
+// Supabase Auth for the CRM. The publishable key is public by design; access is
+// decided by lead-crm, which only accepts signed-in users on CRM_EMAIL_DOMAIN.
+export const SUPABASE_URL = 'https://qymkzfhdneukffeilrhx.supabase.co';
+export const SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_gJeVwOoe-XAF11eDN7CbSA_OE75UmdW';
+export const CRM_EMAIL_DOMAIN = 'tbtfw.com';
+
 // Cloudflare Turnstile, invisible widget. Public site key; the secret lives in Vault.
 export const TURNSTILE_SITE_KEY = '0x4AAAAAAFXP4PgRTicqUUVZ';
 

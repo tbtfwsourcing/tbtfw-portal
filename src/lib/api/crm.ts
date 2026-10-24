@@ -1,4 +1,5 @@
 import { CRM_API } from '../config.js';
+import { accessToken } from '../crm/auth.svelte.js';
 
 export type Channel = 'sms' | 'email';
 export type Direction = 'in' | 'out';
@@ -95,8 +96,15 @@ export interface Result<T = Record<string, unknown>> {
 	json: (T & { ok?: boolean; message?: string }) | null;
 }
 
+// Signed-in users are identified by their Supabase session; the legacy ?k=
+// portal key is still passed through while bookmarks migrate.
 function withKey(path: string, key: string): string {
-	return CRM_API + path + '?k=' + encodeURIComponent(key);
+	return CRM_API + path + (key ? '?k=' + encodeURIComponent(key) : '');
+}
+
+function headers(extra: Record<string, string> = {}): Record<string, string> {
+	const t = accessToken();
+	return t ? { ...extra, Authorization: 'Bearer ' + t } : extra;
 }
 
 async function parse<T>(r: Response): Promise<Result<T>> {
@@ -110,11 +118,11 @@ async function parse<T>(r: Response): Promise<Result<T>> {
 }
 
 export async function getQueue(key: string): Promise<Result<QueueData>> {
-	return parse<QueueData>(await fetch(withKey('/queue', key), { cache: 'no-store' }));
+	return parse<QueueData>(await fetch(withKey('/queue', key), { cache: 'no-store', headers: headers() }));
 }
 
 export async function getVoice(key: string): Promise<Result<Voice>> {
-	return parse<Voice>(await fetch(withKey('/voice', key), { cache: 'no-store' }));
+	return parse<Voice>(await fetch(withKey('/voice', key), { cache: 'no-store', headers: headers() }));
 }
 
 export async function post<T = Record<string, unknown>>(
@@ -125,7 +133,7 @@ export async function post<T = Record<string, unknown>>(
 	return parse<T>(
 		await fetch(withKey(path, key), {
 			method: 'POST',
-			headers: { 'Content-Type': 'application/json' },
+			headers: headers({ 'Content-Type': 'application/json' }),
 			body: JSON.stringify(body ?? {})
 		})
 	);

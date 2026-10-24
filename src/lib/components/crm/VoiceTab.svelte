@@ -39,29 +39,20 @@
 	}
 </script>
 
-<div class="eyebrow mt-6 mb-2.5 text-[10.5px]">
-	The drafting prompt // every first touch, follow-up and reply is written under it
+<div class="eyebrow dots mt-7 mb-3">
+	<span>The drafting prompt</span><span class="normal-case tracking-normal">Every first touch, follow-up and reply is written under it</span>
 </div>
 {#if !crm.voice}
 	<div class="text-xs text-mute">Loading.</div>
 {:else}
-	<Textarea
-		bind:value={text}
-		class="min-h-[420px] rounded-none border-hair bg-background px-3 py-3 text-[13.5px] leading-normal focus-visible:border-foreground focus-visible:ring-0"
-	/>
-	<div class="mt-3 flex flex-wrap items-center gap-2.5">
-		<Button
-			class="h-auto rounded-none border border-foreground bg-foreground px-4 py-3 text-[11px] font-normal tracking-[.14em] uppercase text-background hover:border-bone hover:bg-bone"
-			disabled={saving}
-			onclick={() => (pending = true)}
-		>
-			Save voice
-		</Button>
+	<Textarea bind:value={text} class="min-h-[420px] px-4 py-3.5 text-[13.5px] sm:text-[13.5px]" />
+	<div class="mt-3.5 flex flex-wrap items-center gap-4">
+		<Button variant="house" size="house" disabled={saving} onclick={() => (pending = true)}>Save voice</Button>
 		{#if crm.voice.updated_at}
-			<span class="text-xs text-mute">Version {crm.voice.v ?? ''} // saved {ago(crm.voice.updated_at)}</span>
+			<span class="dots text-xs text-mute"><span class="num">Version {crm.voice.v ?? ''}</span><span>saved {ago(crm.voice.updated_at)}</span></span>
 		{/if}
 	</div>
-	<p class="mt-3.5 max-w-[70ch] text-xs text-mute">
+	<p class="mt-5 max-w-[66ch] text-xs leading-relaxed text-mute">
 		Changes apply to the next draft the system writes. Existing drafts in the queue are not rewritten. Hard rules the
 		system adds on top of this and that you cannot turn off here: a human approves every send; no price or money
 		figure first; only facts from the lead; one question; never AI, automated, bot or system.

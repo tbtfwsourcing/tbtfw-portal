@@ -8,6 +8,7 @@
 	import { digits, identityLine, formatPhone, EMAIL_RE } from '#lib/format.js';
 	import { SITE } from '#lib/config.js';
 	import * as Collapsible from '#lib/components/ui/collapsible/index.js';
+	import * as Card from '#lib/components/ui/card/index.js';
 	import ChevronDownIcon from '@lucide/svelte/icons/chevron-down';
 	import Rail from '#lib/components/Rail.svelte';
 	import FloatField from '#lib/components/FloatField.svelte';
@@ -149,10 +150,10 @@
 		<input type="text" id="buy-website" bind:value={website} tabindex="-1" autocomplete="off" />
 	</div>
 
-	<h1 class="disp mt-2 mb-5 text-[22px] leading-tight md:text-[26px]">Which car</h1>
+	<h1 class="disp mt-3 mb-7 text-[32px] md:text-[42px]">Which car</h1>
 	<InventoryPicker />
 
-	<h2 class="disp mt-10 mb-3 text-xs tracking-[.14em] uppercase">Your details</h2>
+	<h2 class="section-head mb-5">Your details</h2>
 	<FloatField id="buy-full_name" label="Name" type="text" autocomplete="name" required bind:value={f.full_name} bind:ref={nameRef} />
 	<FloatField
 		id="buy-phone"
@@ -192,12 +193,12 @@
 		bind:value={f.message}
 	/>
 
-	<Collapsible.Root class="my-2 mb-6 border-y border-hair">
+	<Collapsible.Root class="my-2 mb-8 border-y border-hair">
 		<Collapsible.Trigger
-			class="flex min-h-[52px] w-full cursor-pointer items-center justify-between text-[15px] text-foreground [&[data-state=open]>svg]:rotate-180"
+			class="flex min-h-[56px] w-full cursor-pointer items-center justify-between text-[14px] text-foreground transition-colors hover:text-bone [&[data-state=open]>svg]:rotate-180"
 		>
 			A few more details
-			<ChevronDownIcon class="size-3.5 transition-transform" />
+			<ChevronDownIcon class="size-3.5 text-mute transition-transform duration-300" />
 		</Collapsible.Trigger>
 		<Collapsible.Content class="pt-1 pb-4">
 			<Toggle id="has_trade" bind:checked={f.has_trade}>I have a trade-in</Toggle>
@@ -209,39 +210,41 @@
 		</Collapsible.Content>
 	</Collapsible.Root>
 
-	<div class="mb-6 border-t border-hair pt-4">
-		<p class="eyebrow mb-1.5">Asking about</p>
-		<div class="flex items-center gap-3">
+	<Card.Root size="sm" class="mb-6 gap-3">
+		<Card.Content>
+		<p class="eyebrow mb-3">Asking about</p>
+		<div class="flex items-center gap-4">
 			{#if picked?.image_url}
 				<img
 					src={sized(picked.image_url, 400)}
 					alt=""
-					width="56"
-					height="42"
-					class="h-[42px] w-14 shrink-0 object-cover"
+					width="64"
+					height="48"
+					class="h-12 w-16 shrink-0 object-cover"
 					onerror={thumbFallback}
 				/>
 			{/if}
 			{#if picked}
-				<p class="disp text-[13px] leading-snug">{identityLine(picked)}</p>
+				<p class="disp-sm text-[15px]">{identityLine(picked)}</p>
 			{:else if f.stock_id === 'other'}
-				<p class="disp text-[13px] leading-snug">Something not listed</p>
+				<p class="disp-sm text-[15px]">Something not listed</p>
 			{:else}
-				<p class="disp text-[13px] leading-snug text-mute">Pick a car above</p>
+				<p class="disp-sm text-[15px] text-mute">Pick a car above</p>
 			{/if}
 		</div>
-	</div>
+		</Card.Content>
+	</Card.Root>
 
 	<Toggle id="buy-consent" consent required bind:checked={f.consent}>
 		I agree to be contacted by {SITE.name} by call, text and email about this inquiry. Message and data rates may apply. Reply STOP to opt out.
 	</Toggle>
-	<p class="-mt-1 mb-6 text-xs text-mute">
+	<p class="-mt-1 mb-6 pl-[34px] text-xs text-mute">
 		We use your details only to reply to this inquiry.
 		<a href={SITE.privacy} target="_blank" rel="noopener" class="text-mute underline underline-offset-2 hover:text-bone">Privacy</a>
 	</p>
 	<div bind:this={tsEl}></div>
+	{#if error}<p class="mb-4 border-l border-bone pl-3 text-[13px] leading-relaxed text-foreground" role="alert">{error}</p>{/if}
 	<Submit disabled={busy.on}>Ask about this car</Submit>
-	{#if error}<p class="mt-3 text-sm text-foreground" role="alert">{error}</p>{/if}
 </form>
 
 <style>

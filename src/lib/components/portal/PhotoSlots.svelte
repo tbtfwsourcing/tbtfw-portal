@@ -2,6 +2,8 @@
 	import { portal, photoCount } from '#lib/portal/state.svelte.js';
 	import { compress } from '#lib/images.js';
 	import { SLOT_ORDER, SLOT_NAMES, MAX_PHOTOS, MIN_PHOTOS, MAX_EXTRA_SLOTS } from '#lib/config.js';
+	import PlusIcon from '@lucide/svelte/icons/plus';
+	import CheckIcon from '@lucide/svelte/icons/check';
 
 	const count = $derived(photoCount());
 	const countLabel = $derived(
@@ -52,7 +54,12 @@
 		{@const p = portal.photos[slot]}
 		<label class="slot" class:filled={!!p} for="ph-{slot}">
 			<input type="file" id="ph-{slot}" accept="image/*" onchange={(e) => onSlot(slot, e)} />
-			{#if p}<img src={p.url} alt="" class="ready" />{/if}
+			{#if p}
+				<img src={p.url} alt="" class="ready" />
+				<span class="tick" aria-hidden="true"><CheckIcon class="size-3" /></span>
+			{:else}
+				<span class="plus" aria-hidden="true"><PlusIcon class="size-4" /></span>
+			{/if}
 			<span class="n">{SLOT_NAMES[slot]}</span>
 		</label>
 	{/each}
@@ -67,7 +74,7 @@
 <div class="addrow">
 	<label for="photos">Add photos</label>
 	<input type="file" id="photos" multiple accept="image/*" onchange={onMany} />
-	<span class="num text-[13px] text-mute">{countLabel}</span>
+	<span class="num text-[12.5px] tracking-[.02em] text-mute">{countLabel}</span>
 </div>
 
 <style>
@@ -82,9 +89,39 @@
 		display: block;
 		aspect-ratio: 1 / 1;
 		border: 1px solid var(--hair);
-		background: var(--bg);
+		background: var(--surface);
 		cursor: pointer;
 		overflow: hidden;
+		transition: border-color 0.2s;
+	}
+	.slot .plus {
+		position: absolute;
+		inset: 0;
+		display: grid;
+		place-items: center;
+		color: var(--mute);
+		transition: color 0.2s;
+	}
+	.slot .tick {
+		position: absolute;
+		top: 8px;
+		right: 8px;
+		z-index: 2;
+		display: grid;
+		place-items: center;
+		width: 20px;
+		height: 20px;
+		border-radius: 999px;
+		background: var(--bone);
+		color: var(--bg);
+	}
+	@media (hover: hover) {
+		.slot:hover {
+			border-color: var(--hair-strong);
+		}
+		.slot:hover .plus {
+			color: var(--fg);
+		}
 	}
 	.slot input,
 	.addrow input {
@@ -108,17 +145,18 @@
 		left: 10px;
 		bottom: 9px;
 		right: 8px;
-		font-size: 12px;
-		line-height: 1.25;
-		color: var(--fg);
+		font-size: 11px;
+		line-height: 1.3;
+		letter-spacing: 0.02em;
+		color: var(--mute);
 	}
 	.slot.filled .n {
-		background: var(--bg);
-		display: inline-block;
 		left: 0;
+		right: 0;
 		bottom: 0;
-		right: auto;
-		padding: 5px 10px 6px;
+		padding: 18px 10px 8px;
+		color: var(--fg);
+		background: linear-gradient(to top, rgba(0, 0, 0, 0.85), rgba(0, 0, 0, 0));
 	}
 	.slot:has(input:focus-visible) {
 		outline: 1px solid var(--bone);
@@ -136,11 +174,17 @@
 		margin-bottom: 6px;
 	}
 	.addrow label {
-		font-size: 14px;
+		font-size: 13px;
+		letter-spacing: 0.04em;
 		text-decoration: underline;
-		text-underline-offset: 4px;
+		text-underline-offset: 5px;
+		text-decoration-color: var(--hair-strong);
 		cursor: pointer;
 		padding: 10px 0;
+		transition: text-decoration-color 0.2s;
+	}
+	.addrow label:hover {
+		text-decoration-color: var(--bone);
 	}
 	.addrow:has(input:focus-visible) label {
 		outline: 1px solid var(--bone);

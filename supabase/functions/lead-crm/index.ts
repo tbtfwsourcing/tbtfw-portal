@@ -1,4 +1,10 @@
-// TBTFW — LEAD CRM — Edge Function v1.3 (Oct 15, 2026, performance pass)
+// TBTFW — LEAD CRM — Edge Function v1.4 (Oct 15, 2026, sign-in)
+// v1.4: THE CRM IS GATED BY SUPABASE AUTH. A request carrying a user session
+//       (Authorization: Bearer <access token>) is allowed when the user's email
+//       is on CRM_ALLOWED_DOMAIN (default tbtfw.com) or in CRM_ALLOWED_EMAILS
+//       (comma-separated). The signed-in email is recorded as `by` on every
+//       lead_event. The legacy ?k= PORTAL_KEY gate still works while bookmarks
+//       migrate; set CRM_LEGACY_KEY=off to retire it.
 // v1.3: /queue fetches drafts, leads and the Graph-token check in parallel
 //       (messages still follow leads, since they need the ids), and the
 //       portal key from Vault is cached in the isolate for five minutes
@@ -24,8 +30,8 @@
 //       message via its provider_ref.
 // Backend for leads.html, the approval queue. NOTHING LEAVES WITHOUT A TAP:
 // every outbound message is a lead_messages row in status 'draft' until a
-// human calls /send on it. Routes (path after /lead-crm), all gated by ?k=
-// matching Vault PORTAL_KEY (RPC get_portal_key; the board's ?k= pattern):
+// human calls /send on it. Routes (path after /lead-crm), all behind the auth
+// gate above:
 //   OPTIONS *                         CORS preflight
 //   GET  /queue                       drafts awaiting approval + leads (60d)
 //   GET  /voice                       { text, updated_at }
@@ -41,15 +47,17 @@
 //   POST /lead/{id}/owner             { assigned_to } -> leads.assigned_to
 // Secrets: SUPABASE_SERVICE_ROLE_KEY (platform); MS_TENANT_ID, MS_CLIENT_ID,
 //   MS_CLIENT_SECRET, MS_MAILBOX (Graph); RESEND_API_KEY + RESEND_FROM
-//   (fallback); TWILIO_ACCOUNT_SID + TWILIO_AUTH_TOKEN + TWILIO_FROM (optional).
-// verify_jwt OFF; the key gate is the auth, same pattern as the board function.
+//   (fallback); TWILIO_ACCOUNT_SID + TWILIO_AUTH_TOKEN + TWILIO_FROM (optional);
+//   CRM_ALLOWED_DOMAIN, CRM_ALLOWED_EMAILS, CRM_LEGACY_KEY (optional, see v1.4).
+// verify_jwt OFF; this function does its own auth (sessions are checked against
+// GoTrue directly, so an expired or foreign token is a clean 401, not a gateway error).
 
 type Json = Record<string, unknown>;
 
 const CORS: Record<string, string> = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
-  "Access-Control-Allow-Headers": "content-type",
+  "Access-Control-Allow-Headers": "authorization, content-type",
   "Access-Control-Max-Age": "86400",
 };
 const DEFAULT_FROM = "TBTFW <sales@tbtfw.com>";
@@ -98,6 +106,9 @@ Deno.serve(async (req: Request) => {
   const TWILIO_SID = Deno.env.get("TWILIO_ACCOUNT_SID") || "";
   const TWILIO_TOKEN = Deno.env.get("TWILIO_AUTH_TOKEN") || "";
   const TWILIO_FROM = Deno.env.get("TWILIO_FROM") || "";
+  const ALLOWED_DOMAIN = (Deno.env.get("CRM_ALLOWED_DOMAIN") || "tbtfw.com").toLowerCase();
+  const ALLOWED_EMAILS = (Deno.env.get("CRM_ALLOWED_EMAILS") || "").toLowerCase().split(",").map((s) => s.trim()).filter(Boolean);
+  const LEGACY_KEY_OK = (Deno.env.get("CRM_LEGACY_KEY") || "on").toLowerCase() !== "off";
 
   const REST = SUPABASE_URL + "/rest/v1";
   const SB: Record<string, string> = { apikey: SERVICE_KEY, Authorization: "Bearer " + SERVICE_KEY, "Content-Type": "application/json" };
@@ -106,6 +117,9 @@ Deno.serve(async (req: Request) => {
   let path = url.pathname.replace(/^\/functions\/v1/, "").replace(/^\/lead-crm/, "");
   if (!path.startsWith("/")) path = "/" + path;
   path = path.replace(/\/+$/, "") || "/";
+
+  // Who is acting: the signed-in email, or "portal_key" on the legacy gate. Set by the auth gate below.
+  let actor = "";
 
   async function sbSelect(table: string, query: string): Promise<Json[]> {
     const r = await fetch(REST + "/" + table + "?" + query, { headers: SB });
@@ -125,7 +139,7 @@ Deno.serve(async (req: Request) => {
   }
   async function event(leadId: string, ev: string, payload: Json): Promise<void> {
     try {
-      await fetch(REST + "/lead_events", { method: "POST", headers: { ...SB, Prefer: "return=minimal" }, body: JSON.stringify({ lead_id: leadId, event: ev, payload }) });
+      await fetch(REST + "/lead_events", { method: "POST", headers: { ...SB, Prefer: "return=minimal" }, body: JSON.stringify({ lead_id: leadId, event: ev, payload: { ...payload, by: actor } }) });
     } catch (_e) { /* never block */ }
   }
 
@@ -183,15 +197,36 @@ Deno.serve(async (req: Request) => {
     return { internetMessageId, conversationId, graphId };
   }
 
-  // ---- key gate -------------------------------------------------------------
-  const k = url.searchParams.get("k") || "";
-  let portalKey = Date.now() - keyCache.at < KEY_TTL_MS ? keyCache.value : "";
-  if (!portalKey) {
-    try { portalKey = String((await rpc("get_portal_key")) || ""); } catch (_e) { portalKey = ""; }
-    if (portalKey) keyCache = { value: portalKey, at: Date.now() };
+  // ---- auth gate ------------------------------------------------------------
+  // Preferred: a Supabase Auth session. The access token is checked against
+  // GoTrue (not just decoded), and the email must be on the allowed domain or list.
+  const bearer = (req.headers.get("authorization") || "").replace(/^Bearer\s+/i, "").trim();
+  if (bearer) {
+    let email = "";
+    try {
+      const r = await fetch(SUPABASE_URL + "/auth/v1/user", { headers: { apikey: SERVICE_KEY, Authorization: "Bearer " + bearer } });
+      if (r.ok) {
+        const u = await r.json().catch(() => ({}));
+        email = String(u.email || "").toLowerCase();
+      }
+    } catch (_e) { email = ""; }
+    if (!email) return fail(401, "bad_session", "Your sign-in has expired. Sign in again.");
+    const allowed = ALLOWED_EMAILS.includes(email) || email.endsWith("@" + ALLOWED_DOMAIN);
+    if (!allowed) return fail(401, "not_allowed", email + " is not allowed into the CRM.");
+    actor = email;
+  } else {
+    // Legacy: ?k= matching Vault PORTAL_KEY, kept while bookmarks migrate.
+    const k = url.searchParams.get("k") || "";
+    if (!LEGACY_KEY_OK || !k) return fail(401, "sign_in_required", "Sign in to use the CRM.");
+    let portalKey = Date.now() - keyCache.at < KEY_TTL_MS ? keyCache.value : "";
+    if (!portalKey) {
+      try { portalKey = String((await rpc("get_portal_key")) || ""); } catch (_e) { portalKey = ""; }
+      if (portalKey) keyCache = { value: portalKey, at: Date.now() };
+    }
+    if (!portalKey) return fail(500, "key_unavailable", "Portal key is not configured in Vault.");
+    if (!safeEqual(k, portalKey)) return fail(401, "bad_key", "Bad or missing key.");
+    actor = "portal_key";
   }
-  if (!portalKey) return fail(500, "key_unavailable", "Portal key is not configured in Vault.");
-  if (!k || !safeEqual(k, portalKey)) return fail(401, "bad_key", "Bad or missing key.");
 
   const body: Json = req.method === "POST" ? (await req.json().catch(() => ({})) as Json) : {};
 
@@ -218,7 +253,7 @@ Deno.serve(async (req: Request) => {
       }
       const out = leads.map((l) => ({ ...l, messages: byLead[String(l.id)] || [] }));
       return json({
-        ok: true, v: "1.3", generated_at: new Date().toISOString(), stages: STAGES,
+        ok: true, v: "1.4", generated_at: new Date().toISOString(), stages: STAGES, actor,
         channels: { email: graphOn || !!RESEND_API_KEY, email_via: graphOn ? "graph:" + MS_MAILBOX : (RESEND_API_KEY ? "resend" : null), sms: !!(TWILIO_SID && TWILIO_TOKEN && TWILIO_FROM), dm: false },
         drafts, leads: out,
       });
@@ -242,7 +277,7 @@ Deno.serve(async (req: Request) => {
       const prev = rows.length ? Number((rows[0].value as Json).v || 0) : 0;
       const r = await fetch(REST + "/portal_kv", {
         method: "POST", headers: { ...SB, Prefer: "resolution=merge-duplicates,return=minimal" },
-        body: JSON.stringify({ key: "voice_prompt", value: { v: prev + 1, text, updated_by: "leads.html" }, updated_at: new Date().toISOString() }),
+        body: JSON.stringify({ key: "voice_prompt", value: { v: prev + 1, text, updated_by: actor || "leads.html" }, updated_at: new Date().toISOString() }),
       });
       if (!r.ok) throw new Error("portal_kv " + r.status + ": " + (await r.text()).slice(0, 200));
       return json({ ok: true, v: prev + 1, chars: text.length });

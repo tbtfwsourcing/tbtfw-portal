@@ -1,13 +1,15 @@
 <script lang="ts">
 	import { SITE } from '#lib/config.js';
 
-	let { suffix = 'PORTAL' }: { suffix?: string } = $props();
+	let { suffix = 'Portal' }: { suffix?: string } = $props();
 </script>
 
 <a
 	href={SITE.home}
-	class="disp text-[13px] tracking-[.12em] text-foreground no-underline"
+	class="inline-flex items-center gap-3 text-foreground no-underline transition-opacity hover:opacity-70"
 	aria-label="{SITE.name}, back to {SITE.home.replace('https://', '')}"
 >
-	{SITE.name} <span class="text-mute">// {suffix}</span>
+	<span class="brand text-[14px]">{SITE.name}</span>
+	<span class="h-3 w-px bg-hair-strong" aria-hidden="true"></span>
+	<span class="eyebrow">{suffix}</span>
 </a>
