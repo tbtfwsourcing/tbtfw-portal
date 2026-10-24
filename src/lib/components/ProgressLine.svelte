@@ -26,7 +26,7 @@
 
 <div
 	aria-hidden="true"
-	class="fixed top-0 left-0 z-50 h-0.5 bg-bone transition-[width,opacity] duration-[1200ms,300ms] ease-out"
+	class="fixed top-[env(safe-area-inset-top)] left-0 z-50 h-0.5 bg-bone transition-[width,opacity] duration-[1200ms,300ms] ease-out"
 	class:opacity-0={!visible}
 	style:width
 ></div>

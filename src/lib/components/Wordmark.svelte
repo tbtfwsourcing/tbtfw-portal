@@ -6,7 +6,7 @@
 
 <a
 	href={SITE.home}
-	class="inline-flex items-center gap-3 text-foreground no-underline transition-opacity hover:opacity-70"
+	class="inline-flex min-h-11 items-center gap-3 text-foreground no-underline transition-opacity hover:opacity-70 active:opacity-70"
 	aria-label="{SITE.name}, back to {SITE.home.replace('https://', '')}"
 >
 	<span class="brand text-[14px]">{SITE.name}</span>

@@ -11,12 +11,13 @@
 
 <div class="mt-1 mb-3 flex h-11 items-center justify-between">
 	{#if onback}
+		<!-- The hit area runs 12px past the text on the left, so a thumb at the screen edge still lands. -->
 		<button
 			type="button"
-			class="-ml-1 inline-flex h-11 cursor-pointer items-center gap-2 bg-transparent pr-3 pl-1 text-[13px] text-mute transition-colors hover:text-foreground"
+			class="-ml-3 inline-flex h-11 cursor-pointer items-center gap-2 bg-transparent pr-4 pl-3 text-[13px] text-mute transition-colors hover:text-foreground active:text-foreground"
 			onclick={onback}
 		>
-			<ArrowLeftIcon class="size-3.5" />
+			<ArrowLeftIcon class="size-3.5" aria-hidden="true" />
 			Back
 		</button>
 	{:else}

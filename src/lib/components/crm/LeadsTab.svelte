@@ -23,6 +23,10 @@
 		type="search"
 		bind:value={crm.filters.q}
 		placeholder="Search name, phone, VIN, ref, car"
+		enterkeyhint="search"
+		autocomplete="off"
+		autocorrect="off"
+		autocapitalize="none"
 		class="min-w-[220px] flex-1 border-hair-strong"
 	/>
 	<Filter bind:value={crm.filters.kind} label="Kind" options={kinds} />

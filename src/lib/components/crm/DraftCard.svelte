@@ -10,6 +10,7 @@
 	import * as Card from '#lib/components/ui/card/index.js';
 	import ArrowUpRightIcon from '@lucide/svelte/icons/arrow-up-right';
 	import LeadChips from './LeadChips.svelte';
+	import ContactLine from './ContactLine.svelte';
 	import Confirm from './Confirm.svelte';
 
 	let { draft }: { draft: Draft } = $props();
@@ -112,7 +113,7 @@
 {#snippet openLeadButton(cls: string)}
 	<button
 		type="button"
-		class="h-9 shrink-0 cursor-pointer items-center gap-1 px-1 text-[10.5px] tracking-[.16em] text-mute uppercase transition-colors hover:text-foreground disabled:opacity-40 {cls}"
+		class="h-11 shrink-0 cursor-pointer active:text-foreground sm:h-9 items-center gap-1 px-1 text-[10.5px] tracking-[.16em] text-mute uppercase transition-colors hover:text-foreground disabled:opacity-40 {cls}"
 		disabled={!!working}
 		onclick={() => l.id && openLead(l.id)}
 	>
@@ -164,9 +165,7 @@
 		<div class="mt-1.5 text-[13px] leading-relaxed text-mute"><b class="eyebrow mr-2.5 text-[10px]">Missing</b>{l.missing_info}</div>
 	{/if}
 
-	<div class="dots mt-4 border-t border-hair pt-4 text-[12.5px] text-mute">
-		<span class="font-medium text-foreground">{l.full_name ?? ''}</span>{#if l.phone}<span class="num whitespace-nowrap">{l.phone}</span>{/if}{#if l.email}<span>{l.email}</span>{/if}{#if l.zip}<span class="num">{l.zip}</span>{/if}{#if l.contact_pref}<span>prefers {l.contact_pref}</span>{/if}
-	</div>
+	<ContactLine lead={l} class="mt-4 border-t border-hair pt-4" />
 	{#if l.message}<div class="mt-2 text-[12.5px] leading-relaxed text-mute">Their note: {l.message}</div>{/if}
 	{#if draft.purpose === 'reply' && lastIn}
 		<div class="mt-4 text-[13.5px] leading-relaxed">

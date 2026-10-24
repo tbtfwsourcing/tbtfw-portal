@@ -31,6 +31,26 @@
 	}: Props = $props();
 
 	const invalid = $derived(error ? 'true' : undefined);
+
+	// The phone keyboard's return key reads "next" and moves to the next field,
+	// the way a native form does, instead of submitting a half-filled form.
+	// A field that passes its own enterkeyhint ("done", "send") keeps the default.
+	const inputRest = $derived(rest as HTMLInputAttributes);
+	const hint_ = $derived(inputRest.enterkeyhint ?? 'next');
+
+	function onkeydown(e: KeyboardEvent & { currentTarget: HTMLInputElement }) {
+		inputRest.onkeydown?.(e);
+		if (e.defaultPrevented || e.key !== 'Enter' || hint_ !== 'next') return;
+		const form = e.currentTarget.form;
+		if (!form) return;
+		const fields = Array.from(
+			form.querySelectorAll<HTMLElement>('input:not([type=hidden]):not([type=radio]):not([type=checkbox]):not([tabindex="-1"]), textarea, select')
+		).filter((el) => !el.hidden && el.offsetParent !== null);
+		const next = fields[fields.indexOf(e.currentTarget) + 1];
+		if (!next) return;
+		e.preventDefault();
+		next.focus();
+	}
 </script>
 
 <div class="field {className}" class:money>
@@ -52,7 +72,9 @@
 			placeholder=" "
 			aria-invalid={invalid}
 			aria-describedby={hint ? id + '-hint' : undefined}
-			{...rest as HTMLInputAttributes}
+			{...inputRest}
+			enterkeyhint={hint_}
+			{onkeydown}
 		/>
 	{/if}
 	<label for={id}>{label}</label>

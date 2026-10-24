@@ -45,7 +45,8 @@
 {#if !crm.voice}
 	<div class="text-xs text-mute">Loading.</div>
 {:else}
-	<Textarea bind:value={text} class="min-h-[420px] px-4 py-3.5 text-[13.5px] sm:text-[13.5px]" />
+	<!-- text-base (16px) on phones from the Textarea default, so iOS does not zoom; the denser 13.5px from sm:. -->
+	<Textarea bind:value={text} class="min-h-[420px] px-4 py-3.5 sm:text-[13.5px]" />
 	<div class="mt-3.5 flex flex-wrap items-center gap-4">
 		<Button variant="house" size="house" disabled={saving} onclick={() => (pending = true)}>Save voice</Button>
 		{#if crm.voice.updated_at}

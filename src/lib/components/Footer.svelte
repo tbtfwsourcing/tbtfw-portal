@@ -16,11 +16,12 @@
 				</span>
 			{/if}
 		</div>
-		<nav class="flex flex-wrap gap-x-7 gap-y-2 text-[12px] tracking-[.06em]" aria-label="Footer">
-			<a href={SITE.home} class="text-foreground transition-colors hover:text-bone">tbtfw.com</a>
-			<a href="{SITE.home}/collections/all" class="text-foreground transition-colors hover:text-bone">Inventory</a>
-			<a href={SITE.privacy} target="_blank" rel="noopener" class="text-mute transition-colors hover:text-bone">Privacy</a>
-			<span class="text-mute">&copy; {year} {SITE.name}</span>
+		<!-- Links carry invisible padding so each is a full-height thumb target without changing the rhythm. -->
+		<nav class="-my-3 flex flex-wrap items-center gap-x-7 text-[12px] tracking-[.06em]" aria-label="Footer">
+			<a href={SITE.home} class="py-3 text-foreground transition-colors hover:text-bone active:text-bone">tbtfw.com</a>
+			<a href="{SITE.home}/collections/all" class="py-3 text-foreground transition-colors hover:text-bone active:text-bone">Inventory</a>
+			<a href={SITE.privacy} target="_blank" rel="noopener" class="py-3 text-mute transition-colors hover:text-bone active:text-bone">Privacy</a>
+			<span class="py-3 text-mute">&copy; {year} {SITE.name}</span>
 		</nav>
 	</div>
 </footer>

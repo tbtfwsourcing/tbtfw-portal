@@ -3,6 +3,7 @@
   "short_name": "TBTFW",
   "description": "Sell your car to TBTFW or ask about a car in stock. Beverly Hills.",
   "start_url": "./",
+  "scope": "./",
   "display": "standalone",
   "background_color": "#000000",
   "theme_color": "#000000",

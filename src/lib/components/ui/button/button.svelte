@@ -14,10 +14,10 @@
 				ghost: "hover:bg-muted hover:text-foreground dark:hover:bg-muted/50 aria-expanded:bg-muted aria-expanded:text-foreground",
 				destructive: "bg-destructive/10 hover:bg-destructive/20 focus-visible:ring-destructive/20 dark:focus-visible:ring-destructive/40 dark:bg-destructive/20 text-destructive focus-visible:border-destructive/40 dark:hover:bg-destructive/30",
 				link: "text-primary underline-offset-4 hover:underline",
-				// TBTFW house variants.
-				house: "border-foreground bg-foreground text-background hover:border-bone hover:bg-bone hover:text-background",
-				hairline: "border-hair-strong bg-transparent text-foreground hover:border-foreground",
-				quiet: "border-transparent bg-transparent text-mute hover:text-foreground",
+				// TBTFW house variants. active: is the press state on touch, where hover never fires.
+				house: "border-foreground bg-foreground text-background hover:border-bone hover:bg-bone hover:text-background active:border-bone active:bg-bone",
+				hairline: "border-hair-strong bg-transparent text-foreground hover:border-foreground active:border-bone active:text-bone",
+				quiet: "border-transparent bg-transparent text-mute hover:text-foreground active:text-bone",
 			},
 			size: {
 				default: "h-8 gap-1.5 px-2.5 has-data-[icon=inline-end]:pr-2 has-data-[icon=inline-start]:pl-2",
@@ -28,10 +28,10 @@
 				"icon-xs": "size-6 rounded-[min(var(--radius-md),10px)] in-data-[slot=button-group]:rounded-lg [&_svg:not([class*='size-'])]:size-3",
 				"icon-sm": "size-7 rounded-[min(var(--radius-md),12px)] in-data-[slot=button-group]:rounded-lg",
 				"icon-lg": "size-9",
-				// House sizes: tracked uppercase labels.
+				// House sizes: tracked uppercase labels. At least 44px tall on phones (a thumb), natural height from sm:.
 				cta: "h-14 w-full px-6 text-[11px] font-medium tracking-[.22em] uppercase",
-				house: "h-auto px-4 py-3 text-[11px] font-medium tracking-[.18em] uppercase",
-				"house-sm": "h-auto px-3.5 py-2.5 text-[10.5px] font-medium tracking-[.18em] uppercase",
+				house: "h-auto min-h-11 px-4 py-3 text-[11px] font-medium tracking-[.18em] uppercase sm:min-h-0",
+				"house-sm": "h-auto min-h-11 px-3.5 py-2.5 text-[10.5px] font-medium tracking-[.18em] uppercase sm:min-h-0",
 			},
 		},
 		defaultVariants: {

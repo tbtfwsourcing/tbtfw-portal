@@ -140,8 +140,8 @@
 		flex-direction: column;
 		gap: 1px;
 		background: var(--hair);
-		/* Header (57) + panels + trade link (~66) fit one phone viewport. */
-		height: calc(100dvh - 128px);
+		/* Header (57) + panels + trade link (~66) fit one phone viewport; the top inset only exists full screen from the home screen. */
+		height: calc(100dvh - 128px - env(safe-area-inset-top));
 		min-height: 480px;
 	}
 	.panel {
@@ -156,6 +156,9 @@
 		overflow: hidden;
 		cursor: pointer;
 		text-align: left;
+		-webkit-user-select: none;
+		user-select: none;
+		-webkit-touch-callout: none;
 	}
 	.index {
 		position: absolute;
@@ -240,7 +243,8 @@
 		outline: 1px solid var(--bone);
 		outline-offset: -2px;
 	}
-	.panel:active .scrim strong {
+	.panel:active .scrim strong,
+	.tradelink:active {
 		color: var(--bone);
 	}
 	@media (hover: hover) {
@@ -275,7 +279,7 @@
 	@media (min-width: 720px) {
 		.choice {
 			flex-direction: row;
-			height: min(calc(100dvh - 136px), 760px);
+			height: min(calc(100dvh - 136px - env(safe-area-inset-top)), 760px);
 			min-height: 520px;
 		}
 		.scrim {

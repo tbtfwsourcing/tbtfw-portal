@@ -26,8 +26,9 @@
 	);
 
 	let error = $state('');
-	let phoneErr = $state('');
-	let emailErr = $state('');
+	// Per-field messages. A failed submit focuses the field, which on a phone
+	// scrolls it under the keyboard, so the message has to sit on the field too.
+	let fe = $state<Record<string, string>>({});
 	let website = $state(''); // honeypot
 	let tsEl = $state<HTMLDivElement | null>(null);
 	let nameRef = $state<HTMLInputElement | HTMLTextAreaElement | null>(null);
@@ -40,11 +41,16 @@
 
 	// Inline checks on blur. Submit re-validates everything regardless.
 	function checkPhone() {
-		phoneErr = f.phone && digits(f.phone).length < 10 ? 'Enter a phone number with area code.' : '';
+		fe.phone = f.phone && digits(f.phone).length < 10 ? 'Enter a phone number with area code.' : '';
 	}
 	function checkEmail() {
 		const v = f.email.trim();
-		emailErr = v && !EMAIL_RE.test(v) ? 'Enter a valid email address.' : '';
+		fe.email = v && !EMAIL_RE.test(v) ? 'Enter a valid email address.' : '';
+	}
+	function fail(field: string, msg: string, ref: { focus(): void } | null) {
+		error = msg;
+		fe[field] = msg;
+		ref?.focus();
 	}
 
 	// The 400px rendition may not exist for every car; fall back to the full image.
@@ -58,27 +64,16 @@
 		e.preventDefault();
 		if (busy.on) return;
 		error = '';
+		fe = {};
 		const stockId = f.stock_id && f.stock_id !== 'other' ? f.stock_id : '';
 		const wanted = f.wanted_text.trim();
 		if (!stockId && !wanted) {
 			error = 'Pick a car, or choose "something not listed" and tell us what you want.';
 			return;
 		}
-		if (!f.full_name.trim()) {
-			error = 'Enter your name.';
-			nameRef?.focus();
-			return;
-		}
-		if (digits(f.phone).length < 10) {
-			error = 'Enter a phone number with area code.';
-			phoneRef?.focus();
-			return;
-		}
-		if (!EMAIL_RE.test(f.email.trim())) {
-			error = 'Enter a valid email address.';
-			emailRef?.focus();
-			return;
-		}
+		if (!f.full_name.trim()) return fail('name', 'Enter your name.', nameRef);
+		if (digits(f.phone).length < 10) return fail('phone', 'Enter a phone number with area code.', phoneRef);
+		if (!EMAIL_RE.test(f.email.trim())) return fail('email', 'Enter a valid email address.', emailRef);
 		if (!f.consent) {
 			error = 'Check the agreement box to send this.';
 			return;
@@ -154,7 +149,18 @@
 	<InventoryPicker />
 
 	<h2 class="section-head mb-5">Your details</h2>
-	<FloatField id="buy-full_name" label="Name" type="text" autocomplete="name" required bind:value={f.full_name} bind:ref={nameRef} />
+	<FloatField
+		id="buy-full_name"
+		label="Name"
+		type="text"
+		autocomplete="name"
+		autocapitalize="words"
+		required
+		bind:value={f.full_name}
+		bind:ref={nameRef}
+		error={fe.name}
+		oninput={() => (fe.name = '')}
+	/>
 	<FloatField
 		id="buy-phone"
 		label="Phone"
@@ -164,10 +170,10 @@
 		required
 		bind:value={f.phone}
 		bind:ref={phoneRef}
-		error={phoneErr}
+		error={fe.phone}
 		oninput={(e: Event & { currentTarget: HTMLInputElement }) => {
 			f.phone = formatPhone(e.currentTarget.value);
-			phoneErr = '';
+			fe.phone = '';
 		}}
 		onblur={checkPhone}
 	/>
@@ -176,12 +182,14 @@
 		label="Email"
 		type="email"
 		autocomplete="email"
+		autocapitalize="none"
+		autocorrect="off"
 		inputmode="email"
 		required
 		bind:value={f.email}
 		bind:ref={emailRef}
-		error={emailErr}
-		oninput={() => (emailErr = '')}
+		error={fe.email}
+		oninput={() => (fe.email = '')}
 		onblur={checkEmail}
 	/>
 	<FloatField

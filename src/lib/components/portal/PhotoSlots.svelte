@@ -92,6 +92,9 @@
 		background: var(--surface);
 		cursor: pointer;
 		overflow: hidden;
+		-webkit-user-select: none;
+		user-select: none;
+		-webkit-touch-callout: none;
 		transition: border-color 0.2s;
 	}
 	.slot .plus {
@@ -181,10 +184,16 @@
 		text-decoration-color: var(--hair-strong);
 		cursor: pointer;
 		padding: 10px 0;
+		min-height: 44px;
+		display: inline-flex;
+		align-items: center;
 		transition: text-decoration-color 0.2s;
 	}
 	.addrow label:hover {
 		text-decoration-color: var(--bone);
+	}
+	.addrow label:active {
+		color: var(--bone);
 	}
 	.addrow:has(input:focus-visible) label {
 		outline: 1px solid var(--bone);

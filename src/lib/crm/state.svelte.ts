@@ -24,12 +24,31 @@ export const crm = $state({
 	lastLoaded: 0 // epoch ms of the last successful load(); 0 until then
 });
 
+// The key arrives as ?k= and is kept in localStorage, so the page added to a
+// phone's home screen (whose start URL carries no query) still opens the queue.
+const KEY_STORE = 'tbtfw.portalKey';
+
 export function readKey(): void {
 	if (typeof window === 'undefined') return;
+	let k = '';
 	try {
-		crm.key = new URLSearchParams(location.search).get('k') ?? '';
+		k = new URLSearchParams(location.search).get('k') ?? '';
+		if (k) localStorage.setItem(KEY_STORE, k);
+		else k = localStorage.getItem(KEY_STORE) ?? '';
 	} catch {
-		crm.key = '';
+		/* no storage; the URL key alone still works */
+	}
+	crm.key = k;
+}
+
+// Drops the stored key, on sign-out and when the backend rejects it (rotated, or
+// retired with CRM_LEGACY_KEY=off), so a home-screen launch falls back to sign-in.
+export function forgetKey(): void {
+	crm.key = '';
+	try {
+		localStorage.removeItem(KEY_STORE);
+	} catch {
+		/* nothing stored */
 	}
 }
 
@@ -51,17 +70,17 @@ export async function load(): Promise<void> {
 	try {
 		const r = await getQueue(crm.key);
 		if (r.status === 401) {
-			crm.blocked = accessToken()
-				? {
-						title: 'Not on the list.',
-						body:
-							sessionEmail() +
-							' is signed in but is not allowed into the CRM. Sign out and use your TBTFW address.'
-					}
-				: {
-						title: 'Bad key.',
-						body: 'The ?k= in the address does not match the portal key. Sign in with your TBTFW email instead.'
-					};
+			if (accessToken()) {
+				crm.blocked = {
+					title: 'Not on the list.',
+					body:
+						sessionEmail() + ' is signed in but is not allowed into the CRM. Sign out and use your TBTFW address.'
+				};
+			} else {
+				// A bad legacy key: forget it, and the page shows the sign-in screen.
+				forgetKey();
+				crm.blocked = null;
+			}
 			return;
 		}
 		if (!r.json?.ok) {
@@ -87,7 +106,7 @@ export async function load(): Promise<void> {
 }
 
 export async function loadVoice(): Promise<void> {
-	if (crm.voiceLoading || !crm.key) return;
+	if (crm.voiceLoading || !signedIn()) return;
 	crm.voiceLoading = true;
 	try {
 		const r = await getVoice(crm.key);

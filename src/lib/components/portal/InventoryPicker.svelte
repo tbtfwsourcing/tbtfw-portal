@@ -82,6 +82,7 @@
 							src={sized(i.image_url, 800)}
 							alt={[i.year, i.make, i.model, i.trim].filter(Boolean).join(' ')}
 							loading="lazy"
+							decoding="async"
 							onerror={(e) => fallback(e, i.image_url)}
 						/>
 					{/if}
@@ -128,6 +129,8 @@
 {/if}
 
 <style>
+	/* On phones the scroller runs edge to edge: cards peek in from the right so
+	   the row reads as swipeable, and snap points line up with the 20px gutter. */
 	.picker {
 		display: flex;
 		gap: 10px;
@@ -153,6 +156,8 @@
 		border: 1px solid var(--hair);
 		background: var(--surface);
 		cursor: pointer;
+		-webkit-user-select: none;
+		user-select: none;
 		transition:
 			border-color 200ms,
 			background-color 200ms;
@@ -265,6 +270,7 @@
 			gap: 12px;
 			overflow: visible;
 			scroll-snap-type: none;
+			scroll-padding-inline: 0;
 			padding: 2px 0 8px;
 		}
 		.car {

@@ -86,6 +86,7 @@
 		maxlength={17}
 		autocapitalize="characters"
 		autocomplete="off"
+		autocorrect="off"
 		spellcheck={false}
 		inputmode="text"
 		required

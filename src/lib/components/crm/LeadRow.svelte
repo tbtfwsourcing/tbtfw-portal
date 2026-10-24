@@ -9,6 +9,7 @@
 	import { Textarea } from '#lib/components/ui/textarea/index.js';
 	import Chip from './Chip.svelte';
 	import LeadChips from './LeadChips.svelte';
+	import ContactLine from './ContactLine.svelte';
 	import Thread from './Thread.svelte';
 	import Confirm from './Confirm.svelte';
 
@@ -101,11 +102,12 @@
 	{/if}
 {/snippet}
 
-<div id="l-{lead.id}" class="border-b border-hair">
+<!-- scroll-margin keeps the row clear of the sticky header when "Open lead" scrolls to it. -->
+<div id="l-{lead.id}" class="border-b border-hair" style:scroll-margin-top="calc(var(--hdr, 0px) + 8px)">
 	{#if !open}
 		<button
 			type="button"
-			class="-mx-3 block w-[calc(100%+24px)] cursor-pointer px-3 py-4 text-left transition-colors hover:bg-surface sm:py-5"
+			class="-mx-3 block w-[calc(100%+24px)] cursor-pointer px-3 py-4 text-left transition-colors hover:bg-surface active:bg-surface sm:py-5"
 			onclick={() => (crm.openId = lead.id)}
 		>
 			{@render summary()}
@@ -128,9 +130,7 @@
 				{#if lead.missing_info}
 					<div class="mt-1.5 text-[13px] leading-relaxed text-mute"><b class="eyebrow mr-2.5 text-[10px]">Missing</b>{lead.missing_info}</div>
 				{/if}
-				<div class="dots mt-3 text-[12.5px] text-mute">
-					<span class="font-medium text-foreground">{lead.full_name ?? ''}</span>{#if lead.phone}<span class="num whitespace-nowrap">{lead.phone}</span>{/if}{#if lead.email}<span>{lead.email}</span>{/if}{#if lead.zip}<span class="num">{lead.zip}</span>{/if}{#if lead.contact_pref}<span>prefers {lead.contact_pref}</span>{/if}
-				</div>
+				<ContactLine {lead} class="mt-3" />
 				{#if isSell}
 					<div class="dots mt-2 text-[12.5px] text-mute">
 						<span class="num break-all">VIN {lead.vin ?? ''}</span>{#if lead.intent}<span>{lead.intent}</span>{/if}{#if lead.condition}<span>{lead.condition}</span>{/if}{#if lead.photo_count}<span>{lead.photo_count} photos</span>{/if}

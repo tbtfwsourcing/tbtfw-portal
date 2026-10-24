@@ -18,8 +18,9 @@
 	const rail = $derived(railFor('sell1'));
 
 	let error = $state('');
-	let phoneErr = $state('');
-	let emailErr = $state('');
+	// Per-field messages. A failed submit focuses the field, which on a phone
+	// scrolls it under the keyboard, so the message has to sit on the field too.
+	let fe = $state<Record<string, string>>({});
 	let website = $state('');
 	let tsEl = $state<HTMLDivElement | null>(null);
 	let mileageRef = $state<HTMLInputElement | HTMLTextAreaElement | null>(null);
@@ -34,17 +35,23 @@
 
 	// Inline checks on blur. Submit re-validates everything regardless.
 	function checkPhone() {
-		phoneErr = f.phone && digits(f.phone).length < 10 ? 'Enter a phone number with area code.' : '';
+		fe.phone = f.phone && digits(f.phone).length < 10 ? 'Enter a phone number with area code.' : '';
 	}
 	function checkEmail() {
 		const v = f.email.trim();
-		emailErr = v && !EMAIL_RE.test(v) ? 'Enter a valid email address.' : '';
+		fe.email = v && !EMAIL_RE.test(v) ? 'Enter a valid email address.' : '';
+	}
+	function fail(field: string, msg: string, ref: { focus(): void } | null) {
+		error = msg;
+		fe[field] = msg;
+		ref?.focus();
 	}
 
 	async function submit(e: SubmitEvent) {
 		e.preventDefault();
 		if (busy.on) return;
 		error = '';
+		fe = {};
 		const vin = f.vin.toUpperCase();
 		// Already created on a previous pass through this screen: just move on.
 		if (portal.sell?.id && portal.sell.vin === vin) {
@@ -57,36 +64,17 @@
 			return;
 		}
 		const mi = digits(f.mileage);
-		if (!mi) {
-			error = 'Enter the mileage.';
-			mileageRef?.focus();
-			return;
-		}
+		if (!mi) return fail('mileage', 'Enter the mileage.', mileageRef);
 		const ask = digits(f.asking_price);
-		if (!ask) {
-			error = 'Enter what you are looking to get.';
-			askRef?.focus();
-			return;
-		}
+		if (!ask) return fail('asking', 'Enter what you are looking to get.', askRef);
 		if (photoCount() < MIN_PHOTOS) {
 			error = 'Add at least three photos.';
+			document.getElementById('photos-h')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
 			return;
 		}
-		if (!f.full_name.trim()) {
-			error = 'Enter your name.';
-			nameRef?.focus();
-			return;
-		}
-		if (digits(f.phone).length < 10) {
-			error = 'Enter a phone number with area code.';
-			phoneRef?.focus();
-			return;
-		}
-		if (!EMAIL_RE.test(f.email.trim())) {
-			error = 'Enter a valid email address.';
-			emailRef?.focus();
-			return;
-		}
+		if (!f.full_name.trim()) return fail('name', 'Enter your name.', nameRef);
+		if (digits(f.phone).length < 10) return fail('phone', 'Enter a phone number with area code.', phoneRef);
+		if (!EMAIL_RE.test(f.email.trim())) return fail('email', 'Enter a valid email address.', emailRef);
 		if (!f.consent) {
 			error = 'Check the agreement box to send this.';
 			return;
@@ -181,6 +169,8 @@
 		required
 		bind:value={f.mileage}
 		bind:ref={mileageRef}
+		error={fe.mileage}
+		oninput={() => (fe.mileage = '')}
 		onblur={() => (f.mileage = groupDigits(f.mileage))}
 	/>
 	<FloatField
@@ -192,15 +182,28 @@
 		required
 		bind:value={f.asking_price}
 		bind:ref={askRef}
+		error={fe.asking}
+		oninput={() => (fe.asking = '')}
 		onblur={() => (f.asking_price = groupDigits(f.asking_price))}
 	/>
 
-	<h2 class="section-head mb-1.5">Photos</h2>
+	<h2 id="photos-h" class="section-head mb-1.5 scroll-mt-4">Photos</h2>
 	<p class="mb-4 text-[14px] text-mute">Three or more. Camera or library, your choice.</p>
 	<PhotoSlots />
 
 	<h2 class="section-head mb-5">Your details</h2>
-	<FloatField id="sell-full_name" label="Name" type="text" autocomplete="name" required bind:value={f.full_name} bind:ref={nameRef} />
+	<FloatField
+		id="sell-full_name"
+		label="Name"
+		type="text"
+		autocomplete="name"
+		autocapitalize="words"
+		required
+		bind:value={f.full_name}
+		bind:ref={nameRef}
+		error={fe.name}
+		oninput={() => (fe.name = '')}
+	/>
 	<FloatField
 		id="sell-phone"
 		label="Phone"
@@ -210,10 +213,10 @@
 		required
 		bind:value={f.phone}
 		bind:ref={phoneRef}
-		error={phoneErr}
+		error={fe.phone}
 		oninput={(e: Event & { currentTarget: HTMLInputElement }) => {
 			f.phone = formatPhone(e.currentTarget.value);
-			phoneErr = '';
+			fe.phone = '';
 		}}
 		onblur={checkPhone}
 	/>
@@ -222,12 +225,14 @@
 		label="Email"
 		type="email"
 		autocomplete="email"
+		autocapitalize="none"
+		autocorrect="off"
 		inputmode="email"
 		required
 		bind:value={f.email}
 		bind:ref={emailRef}
-		error={emailErr}
-		oninput={() => (emailErr = '')}
+		error={fe.email}
+		oninput={() => (fe.email = '')}
 		onblur={checkEmail}
 	/>
 

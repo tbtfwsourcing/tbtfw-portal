@@ -2,7 +2,7 @@
 	import { onMount, tick } from 'svelte';
 	import RefreshCw from '@lucide/svelte/icons/refresh-cw';
 	import LogOut from '@lucide/svelte/icons/log-out';
-	import { crm, readKey, load, signedIn, type Tab } from '#lib/crm/state.svelte.js';
+	import { crm, readKey, forgetKey, load, signedIn, type Tab } from '#lib/crm/state.svelte.js';
 	import { auth, initAuth, signOut, sessionEmail } from '#lib/crm/auth.svelte.js';
 	import { SITE } from '#lib/config.js';
 	import { ago } from '#lib/format.js';
@@ -32,6 +32,8 @@
 	const ready = $derived(!crm.loading && !crm.blocked && signedIn());
 	const showSignIn = $derived(auth.ready && !crm.loading && !signedIn());
 
+	// The sticky header's height, so a lead scrolled into view lands below it (see LeadRow).
+	let headerH = $state(0);
 	let refreshing = $state(false);
 	async function refresh() {
 		if (refreshing) return;
@@ -51,6 +53,7 @@
 	}
 	async function leave() {
 		await signOut();
+		forgetKey();
 		crm.data = null;
 		crm.blocked = null;
 		crm.openId = null;
@@ -78,12 +81,13 @@
 	$effect(() => {
 		const id = crm.openId;
 		if (crm.tab === 'leads' && id) {
-			tick().then(() => document.getElementById('l-' + id)?.scrollIntoView({ block: 'start' }));
+			tick().then(() => document.getElementById('l-' + id)?.scrollIntoView({ block: 'start', behavior: 'smooth' }));
 		}
 	});
 
+	// On phones the three tabs share the width as thumb-height segments; from sm: they hug their labels.
 	const trigger =
-		'eyebrow h-auto flex-none rounded-none border-0 px-0 pt-2.5 pb-3.5 text-[11px] tracking-[.18em] text-mute transition-colors data-active:bg-transparent data-active:text-foreground data-active:shadow-none hover:text-foreground after:bottom-[-1px] after:h-px after:bg-foreground';
+		'eyebrow h-auto min-h-11 flex-1 rounded-none border-0 px-0 pt-2.5 pb-3.5 text-[11px] tracking-[.18em] text-mute transition-colors data-active:bg-transparent data-active:text-foreground data-active:shadow-none hover:text-foreground active:text-foreground after:bottom-[-1px] after:h-px after:bg-foreground sm:min-h-0 sm:flex-none';
 </script>
 
 <svelte:head>
@@ -91,13 +95,14 @@
 	<meta name="robots" content="noindex, nofollow" />
 </svelte:head>
 
-<div class="mx-auto max-w-[980px] px-4 pb-24 sm:px-5">
+<div class="mx-auto max-w-[980px] px-4 pb-[calc(96px+env(safe-area-inset-bottom))] sm:px-5" style:--hdr="{headerH}px">
 	<Tabs.Root bind:value={crm.tab as string} onValueChange={(v) => (crm.tab = v as Tab)}>
-		<header class="sticky top-0 z-10 border-b border-hair bg-background pt-[calc(14px+env(safe-area-inset-top))] sm:pt-[calc(18px+env(safe-area-inset-top))]">
+		<header bind:clientHeight={headerH} class="sticky top-0 z-10 border-b border-hair bg-background pt-[calc(14px+env(safe-area-inset-top))] sm:pt-[calc(18px+env(safe-area-inset-top))]">
 			<!-- On a phone the status row drops under the wordmark; from sm: it sits on the same line. -->
 			<div class="flex flex-wrap items-center justify-between gap-x-6 gap-y-2.5">
 				<Wordmark suffix="Leads" />
-				<div class="flex min-w-0 items-center gap-4">
+				<!-- Refresh and sign out are 44px squares on phones; the negative margins keep the icons where they sit at 24px. -->
+				<div class="-mr-2.5 flex min-w-0 items-center gap-1 sm:mr-0 sm:gap-4">
 					{#if ready}
 						<div class="flex flex-wrap items-center gap-x-4 gap-y-1 text-[10.5px] tracking-[.16em] text-mute uppercase">
 							<span class="num hidden sm:inline"><b class="font-medium text-foreground">{drafts}</b> to approve</span>
@@ -116,7 +121,7 @@
 						<Button
 							variant="ghost"
 							size="icon-xs"
-							class="rounded-none text-mute hover:bg-transparent hover:text-foreground"
+							class="-my-2.5 size-11 rounded-none text-mute hover:bg-transparent hover:text-foreground active:text-foreground sm:my-0 sm:size-6"
 							aria-label="Refresh"
 							onclick={refresh}
 						>
@@ -127,7 +132,7 @@
 						<Button
 							variant="ghost"
 							size="icon-xs"
-							class="rounded-none text-mute hover:bg-transparent hover:text-foreground"
+							class="-my-2.5 size-11 rounded-none text-mute hover:bg-transparent hover:text-foreground active:text-foreground sm:my-0 sm:size-6"
 							aria-label="Sign out {sessionEmail()}"
 							title={sessionEmail()}
 							onclick={leave}
@@ -137,7 +142,7 @@
 					{/if}
 				</div>
 			</div>
-			<Tabs.List data-variant="line" class="mt-3 h-auto w-auto justify-start gap-7 rounded-none bg-transparent p-0 sm:mt-4 {signedIn() ? '' : 'invisible'}">
+			<Tabs.List data-variant="line" class="mt-3 flex h-auto w-full justify-start gap-7 rounded-none bg-transparent p-0 sm:mt-4 sm:inline-flex sm:w-auto {signedIn() ? '' : 'invisible'}">
 				<Tabs.Trigger value="queue" class={trigger}>
 					Queue{#if drafts}<span class="ml-2 text-bone">{drafts}</span>{/if}
 				</Tabs.Trigger>
