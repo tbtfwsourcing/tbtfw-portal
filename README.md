@@ -38,13 +38,14 @@ Every page is static HTML that talks to the Edge Functions from the browser. The
         portal/photos.svelte.ts   which inventory photos are real (the CDN's "Coming soon" card is never shown)
         portal/turnstile.ts       invisible Turnstile
         crm/state.svelte.ts       the CRM session: key, queue data, tab, filters
+        crm/demo.ts               dev-only made-up queue for /leads?demo (never in the build)
         components/
           FloatField  ChipGroup  Toggle  Wordmark  Footer  ProgressLine
           portal/                 ChoiceScreen (home), BuyScreen (find any car), ShowroomScreen (car view),
                                   SideMenu (the slide-out showroom), AskSheet,
                                   SellCar / SellNumbers / SellPhotos / SellYou, Details and Done screens,
                                   and their parts: TopBar, Step, Dock, BottomSheet, VinField, PhotoSlots
-          crm/                    DraftCard, LeadRow, Thread, LeadChips, Chip, Confirm, the three tabs
+          crm/                    DraftCard, LeadRow, LeadDetail, StageMark, Thread, Confirm, the three tabs
           ui/                     shadcn-svelte components (generated; edit freely, they are yours)
     static/                       favicon, apple-touch-icon, og.jpg (link preview), manifest, robots, .nojekyll
     supabase/functions/           Edge Function sources (see below)
@@ -56,7 +57,7 @@ Every page is static HTML that talks to the Edge Functions from the browser. The
 ## Working locally
 
     npm install
-    npm run dev          # http://127.0.0.1:5173  — CRM at /leads?k=PORTAL_KEY
+    npm run dev          # http://127.0.0.1:5173  — CRM at /leads?k=PORTAL_KEY, or /leads?demo for made-up data
     npm run check        # svelte-check, must be clean before pushing
     npm run build        # static site into build/
     npm run preview      # serve build/
@@ -77,8 +78,12 @@ One-time repo setting: **Settings → Pages → Build and deployment → Source:
 
 - Customer and lead text is rendered through Svelte, which escapes it. Never pass user data through `{@html}`.
 - Form field names and endpoints are the backend contract — see `lib/api/*.ts`. Change them with the function.
-- Every draft on the CRM was written by the system and has **not** been sent. Send / Copy + Mark sent / Skip are
-  the only ways a draft leaves the queue.
+- Every draft on the CRM was written by the system and has **not** been sent. Send / Mark sent / Skip are the only
+  ways a draft leaves the queue. With a channel off, Open in Messages (or Mail) hands the draft to the device
+  prefilled; it still has to be marked sent by hand.
+- The in-stock auto-email (lead-enrich v1.6) is off: `AUTO_SEND = false` since v1.7, so no customer gets a message
+  without a tap. If it is ever switched back on, such a reply waits in the queue as `approved` for five minutes,
+  and the dashboard shows it with a countdown, Send now and Cancel.
 - The CRM reads its key from `?k=` at runtime and never stores it.
 - Keep the design tokens in `app.css`. Components take their colour from `bg-foreground`, `text-mute`,
   `border-hair`, `text-bone` and friends, not from literal hex values. The palette matches tbtfw.com:
@@ -114,7 +119,7 @@ One-time repo setting: **Settings → Pages → Build and deployment → Source:
     ms-auth/            Microsoft sign-in for garett@tbtfw.com (v6)
     lead-intake/        intake API, dedupe, Turnstile, photo uploads (v1.4, deployed version 11)
     lead-enrich/        every 2 min: grading, drafts, follow-ups, replies; emails each lead to Garett (v1.7)
-    lead-crm/           backend for the CRM; Graph email send, Supabase Auth gate (v1.4, deployed version 12)
+    lead-crm/           backend for the CRM; Graph email send, Supabase Auth gate, auto-email cancel (v1.5, deployed version 14)
     lead-inbox/         odd minutes: polls the Outlook inbox for replies (v1.0, deployed version 2)
     inventory-sync/     hourly mirror of tbtfw.com inventory (v1.1, deployed version 8)
     spec-inference/     Haiku grader, shared with the board; lead mode (v2.7, deployed version 14)

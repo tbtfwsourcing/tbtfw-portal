@@ -1,4 +1,13 @@
-// TBTFW — LEAD CRM — Edge Function v1.4 (Oct 15, 2026, sign-in)
+// TBTFW — LEAD CRM — Edge Function v1.5 (Oct 24, 2026, auto-email)
+// v1.5: AUTO-EMAILS. lead-enrich v1.6 stores an in-stock first answer as status
+//       'approved' with approved_at = when it goes out. /queue returns those
+//       beside the drafts (with status and approved_at) so the dashboard can
+//       show the countdown; POST /message/{id}/cancel turns one back into a
+//       draft. lead-enrich's SWEEP F calls /send with the service-role key
+//       (actor "auto-send"); /send claims an approved row first, so a cancel
+//       in the same instant either wins or gets a 409, and a failed auto-send
+//       returns to the queue as a draft with its error instead of vanishing.
+//       Send, mark and skip accept approved rows as well as drafts.
 // v1.4: THE CRM IS GATED BY SUPABASE AUTH. A request carrying a user session
 //       (Authorization: Bearer <access token>) is allowed when the user's email
 //       is on CRM_ALLOWED_DOMAIN (default tbtfw.com) or in CRM_ALLOWED_EMAILS
@@ -42,6 +51,7 @@
 //                                     secrets set), dm -> 501
 //   POST /message/{id}/mark           the human sent it by hand -> status sent
 //   POST /message/{id}/skip           mark the draft skipped (nothing sent)
+//   POST /message/{id}/cancel         an approved auto-email goes back to draft
 //   POST /lead/{id}/note              { notes } -> leads.notes
 //   POST /lead/{id}/status            { status } -> leads.status
 //   POST /lead/{id}/owner             { assigned_to } -> leads.assigned_to
@@ -201,7 +211,10 @@ Deno.serve(async (req: Request) => {
   // Preferred: a Supabase Auth session. The access token is checked against
   // GoTrue (not just decoded), and the email must be on the allowed domain or list.
   const bearer = (req.headers.get("authorization") || "").replace(/^Bearer\s+/i, "").trim();
-  if (bearer) {
+  if (bearer && safeEqual(bearer, SERVICE_KEY)) {
+    // lead-enrich sending a due auto-email (v1.5). The service-role key never leaves the platform.
+    actor = "auto-send";
+  } else if (bearer) {
     let email = "";
     try {
       const r = await fetch(SUPABASE_URL + "/auth/v1/user", { headers: { apikey: SERVICE_KEY, Authorization: "Bearer " + bearer } });
@@ -236,7 +249,7 @@ Deno.serve(async (req: Request) => {
       const since = new Date(Date.now() - RECENT_DAYS * 86400000).toISOString();
       // Drafts, leads and the mailbox check are independent: one round trip, not three.
       const [drafts, leads, graphOn] = await Promise.all([
-        sbSelect("lead_messages", "status=eq.draft&select=id,lead_id,channel,purpose,to_address,subject,body,created_at&order=created_at.desc&limit=100"),
+        sbSelect("lead_messages", "status=in.(draft,approved)&select=id,lead_id,channel,purpose,to_address,subject,body,status,approved_at,created_at&order=created_at.desc&limit=100"),
         sbSelect("leads", "created_at=gte." + encodeURIComponent(since) + "&select=id,ref,kind,status,classification,missing_info,flag,source,channel,full_name,phone,email,contact_pref,stock_id,wanted_text,vin,year,make,model,trim,canon_model,canon_trim,mileage,asking_price,intent,timeline,condition,zip,message,photo_count,ready_at,alerted_at,enriched_at,enrich_error,comps_median,comps_n,verdict,verdict_score,verdict_reasoning,desirability_tier,desirability_why,detected_specs,notes,assigned_to,created_at,updated_at&order=created_at.desc&limit=400"),
         graphRefreshToken().then((t) => !!t),
       ]);
@@ -253,7 +266,7 @@ Deno.serve(async (req: Request) => {
       }
       const out = leads.map((l) => ({ ...l, messages: byLead[String(l.id)] || [] }));
       return json({
-        ok: true, v: "1.4", generated_at: new Date().toISOString(), stages: STAGES, actor,
+        ok: true, v: "1.5", generated_at: new Date().toISOString(), stages: STAGES, actor,
         channels: { email: graphOn || !!RESEND_API_KEY, email_via: graphOn ? "graph:" + MS_MAILBOX : (RESEND_API_KEY ? "resend" : null), sms: !!(TWILIO_SID && TWILIO_TOKEN && TWILIO_FROM), dm: false },
         drafts, leads: out,
       });
@@ -323,7 +336,7 @@ Deno.serve(async (req: Request) => {
   }
 
   // ---- POST /message/{id}/send | /mark | /skip ---------------------------------
-  const mm = path.match(/^\/message\/([0-9a-fA-F-]{36})\/(send|mark|skip)$/);
+  const mm = path.match(/^\/message\/([0-9a-fA-F-]{36})\/(send|mark|skip|cancel)$/);
   if (!mm) return fail(404, "not_found", "No such route.");
   const msgId = mm[1];
   let msg: Json | null = null;
@@ -335,7 +348,21 @@ Deno.serve(async (req: Request) => {
   }
   if (!msg) return fail(404, "message_not_found", "No message with that id.");
   const leadId = String(msg.lead_id);
-  if (msg.status !== "draft") return fail(409, "not_a_draft", "This message is " + msg.status + "; only drafts can be sent, marked or skipped.");
+  // An auto-email waiting to go out (v1.5) is handled like a draft, and can also be cancelled.
+  const auto = msg.status === "approved";
+
+  if (mm[2] === "cancel") {
+    if (!auto) return fail(409, "not_scheduled", "This message is " + msg.status + "; only a queued auto-email can be cancelled.");
+    try {
+      const row = await sbPatch("lead_messages", "id=eq." + msgId + "&status=eq.approved", { status: "draft", approved_at: null, updated_at: new Date().toISOString() });
+      if (!row) return fail(409, "already_sending", "It has already gone out.");
+      await event(leadId, "auto_send_cancelled", { message_id: msgId });
+      return json({ ok: true, message_id: msgId, status: "draft" });
+    } catch (e) {
+      return fail(500, "write_failed", String((e as Error).message || e));
+    }
+  }
+  if (msg.status !== "draft" && !auto) return fail(409, "not_a_draft", "This message is " + msg.status + "; only drafts can be sent, marked or skipped.");
 
   if (mm[2] === "skip") {
     try {
@@ -370,6 +397,16 @@ Deno.serve(async (req: Request) => {
 
   // send
   if (!to) return fail(400, "no_address", "No " + channel + " address on this lead.");
+  if (auto && ["junk", "duplicate"].includes(String(lead.status))) {
+    await sbPatch("lead_messages", "id=eq." + msgId + "&status=eq.approved", { status: "skipped", updated_at: new Date().toISOString() }).catch(() => null);
+    return fail(409, "lead_closed", "The lead was marked " + lead.status + "; the auto-email was skipped.");
+  }
+  // Claim a queued auto-email so a Cancel cannot land mid-send; 'failed' with this note is the
+  // in-flight state (the status check allows no other), replaced on success or on failure below.
+  if (auto) {
+    const claimed = await sbPatch("lead_messages", "id=eq." + msgId + "&status=eq.approved", { status: "failed", error: "auto-send in progress", updated_at: new Date().toISOString() }).catch(() => null);
+    if (!claimed) return fail(409, "not_scheduled", "It was cancelled or has already gone out.");
+  }
   let providerId = "";
   let provider = channel === "email" ? "graph" : "twilio";
   let threadId: string | null = msg.thread_id ? String(msg.thread_id) : null;
@@ -416,8 +453,9 @@ Deno.serve(async (req: Request) => {
     }
   } catch (e) {
     const err = String((e as Error).message || e).slice(0, 500);
-    await sbPatch("lead_messages", "id=eq." + msgId, { status: "failed", error: err, body: finalBody, subject: finalSubject, provider, updated_at: new Date().toISOString() }).catch(() => null);
-    await event(leadId, "message_failed", { message_id: msgId, channel, provider, error: err });
+    // A failed auto-email goes back into the queue as a draft, so it is seen and sent by hand.
+    await sbPatch("lead_messages", "id=eq." + msgId, { status: auto ? "draft" : "failed", approved_at: auto ? null : msg.approved_at ?? null, error: err, body: finalBody, subject: finalSubject, provider, updated_at: new Date().toISOString() }).catch(() => null);
+    await event(leadId, "message_failed", { message_id: msgId, channel, provider, error: err, auto });
     return fail(502, "send_failed", err);
   }
 
@@ -427,6 +465,6 @@ Deno.serve(async (req: Request) => {
     approved_at: now, sent_at: now, error: null, updated_at: now,
   });
   if (lead.status === "new") await sbPatch("leads", "id=eq." + leadId, { status: "contacted", updated_at: now }).catch(() => null);
-  await event(leadId, "message_sent", { message_id: msgId, channel, purpose: msg.purpose, provider, provider_id: providerId, thread_id: threadId, edited });
+  await event(leadId, "message_sent", { message_id: msgId, channel, purpose: msg.purpose, provider, provider_id: providerId, thread_id: threadId, edited, auto });
   return json({ ok: true, message_id: msgId, status: "sent", channel, provider, provider_id: providerId, edited });
 });

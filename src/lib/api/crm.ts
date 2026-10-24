@@ -50,6 +50,7 @@ export interface Lead {
 	stock_id?: string;
 	wanted_text?: string;
 	intent?: string;
+	timeline?: string;
 	condition?: string;
 	photo_count?: number;
 	// grading
@@ -62,6 +63,7 @@ export interface Lead {
 	comps_median?: number | null;
 	flag?: string;
 	missing_info?: string;
+	enrich_error?: string | null;
 	messages?: Message[];
 }
 
@@ -73,6 +75,10 @@ export interface Draft {
 	subject?: string;
 	body?: string;
 	to_address?: string;
+	created_at?: string;
+	// 'approved' is an in-stock auto-email waiting to go out at approved_at; Cancel turns it back into a draft.
+	status?: 'draft' | 'approved';
+	approved_at?: string | null;
 }
 
 export interface QueueData {
@@ -80,8 +86,10 @@ export interface QueueData {
 	message?: string;
 	drafts: Draft[];
 	leads: Lead[];
-	channels: { email?: boolean; sms?: boolean };
+	// email_via is "graph:<mailbox>" when Outlook sends, "resend" on the fallback, null when off.
+	channels: { email?: boolean; email_via?: string | null; sms?: boolean };
 	stages?: string[];
+	actor?: string;
 }
 
 export interface Voice {
@@ -151,5 +159,6 @@ export const crm = {
 		post(key, '/message/' + id + '/send', { body, subject }),
 	mark: (key: string, id: string, body: string, subject: string | null) =>
 		post(key, '/message/' + id + '/mark', { body, subject }),
-	skip: (key: string, id: string) => post(key, '/message/' + id + '/skip', {})
+	skip: (key: string, id: string) => post(key, '/message/' + id + '/skip', {}),
+	cancel: (key: string, id: string) => post(key, '/message/' + id + '/cancel', {})
 };

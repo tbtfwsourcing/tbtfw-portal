@@ -1,6 +1,8 @@
 // Backend endpoints. Both are public Supabase Edge Functions that gate themselves.
 export const INTAKE_API = 'https://qymkzfhdneukffeilrhx.supabase.co/functions/v1/lead-intake';
 export const CRM_API = 'https://qymkzfhdneukffeilrhx.supabase.co/functions/v1/lead-crm';
+// Microsoft sign-in for the sending mailbox; /start?k= reconnects it when email goes off.
+export const MS_AUTH_API = 'https://qymkzfhdneukffeilrhx.supabase.co/functions/v1/ms-auth';
 
 // Where inventory photos are served from; the portal preconnects to it.
 export const IMAGE_CDN = 'https://automanager.blob.core.windows.net';
