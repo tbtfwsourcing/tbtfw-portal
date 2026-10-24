@@ -1,0 +1,93 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+/* The portal's own faces, straight from node_modules (render.mjs opens this file with file access on). */
+@font-face { font-family: 'Archivo'; src: url('../../node_modules/@fontsource-variable/archivo/files/archivo-latin-wdth-normal.woff2') format('woff2'); font-weight: 100 900; font-stretch: 62% 125%; }
+@font-face { font-family: 'Inter'; src: url('../../node_modules/@fontsource-variable/inter/files/inter-latin-wght-normal.woff2') format('woff2'); font-weight: 100 900; }
+* { margin: 0; box-sizing: border-box; }
+html, body { width: 1200px; height: 630px; background: #050505; overflow: hidden; }
+.card { position: relative; width: 1200px; height: 630px; overflow: hidden; color: #f4f4f2; font-family: 'Inter', sans-serif; }
+.ph { position: absolute; inset: 0; background-size: cover; background-position: 62% 70%; transform-origin: 62% 62%; will-change: transform, opacity; }
+.shade { position: absolute; inset: 0; background:
+	linear-gradient(to right, rgba(5,5,5,.94) 0%, rgba(5,5,5,.78) 30%, rgba(5,5,5,.2) 58%, rgba(5,5,5,0) 75%),
+	linear-gradient(to top, rgba(5,5,5,.9) 0%, rgba(5,5,5,0) 45%),
+	linear-gradient(to bottom, rgba(5,5,5,.55) 0%, rgba(5,5,5,0) 30%); }
+.mark { position: absolute; top: 56px; left: 72px; font-family: 'Archivo'; font-stretch: 125%; font-weight: 700; font-size: 30px; letter-spacing: .12em; }
+.copy { position: absolute; left: 72px; bottom: 64px; width: 640px; }
+.rule { width: 28px; height: 1px; background: #cdc4b0; margin-bottom: 22px; transform-origin: left; }
+.h { font-family: 'Archivo'; font-stretch: 118%; font-weight: 500; font-size: 66px; line-height: 1.04; letter-spacing: -.012em; }
+.mask { display: inline-block; overflow: hidden; vertical-align: top; padding-bottom: .08em; margin-bottom: -.08em; }
+.w { display: inline-block; will-change: transform; }
+.eb { margin-top: 22px; font-size: 14px; font-weight: 500; letter-spacing: .26em; text-transform: uppercase; color: #cdc4b0; }
+.eb span + span::before { content: '\00B7'; margin: 0 .7em; color: #5a5650; }
+</style>
+</head>
+<body>
+<div class="card">
+	<div class="ph" id="ph0"></div>
+	<div class="ph" id="ph1"></div>
+	<div class="shade"></div>
+	<div class="mark" id="mark">TBTFW</div>
+	<div class="copy">
+		<div class="rule" id="rule"></div>
+		<div class="h" id="h"></div>
+		<div class="eb" id="eb"><span>Beverly Hills</span><span>Buy</span><span>Sell</span><span>Trade</span></div>
+	</div>
+</div>
+<script>
+	// The link preview at any moment t of its six seconds, so render.mjs can capture it frame
+	// by frame at an exact rate. The last frame is the still (og.jpg), so a preview that plays
+	// once ends on its cover. ?a= is the lead car's photo, ?b= the car it crossfades to.
+	const q = new URLSearchParams(location.search);
+	const photos = [q.get('a'), q.get('b')];
+	const words = 'The extraordinary, bought and sold.'.split(' ');
+	const h = document.getElementById('h');
+	h.innerHTML = words.map((w) => `<span class="mask"><span class="w">${w}</span></span>`).join(' ');
+	const W = [...h.querySelectorAll('.w')];
+	const $ = (id) => document.getElementById(id);
+
+	const clamp = (x) => Math.max(0, Math.min(1, x));
+	const span = (t, a, b) => clamp((t - a) / (b - a));
+	const outCubic = (x) => 1 - Math.pow(1 - x, 3);
+	const outQuart = (x) => 1 - Math.pow(1 - x, 4);
+	const inOut = (x) => (x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2);
+
+	window.render = (t) => {
+		// The flagship rises out of black and settles from a slow push-in.
+		$('ph0').style.opacity = outCubic(span(t, 0, 1.1));
+		$('ph0').style.transform = `scale(${1.09 - 0.09 * outCubic(span(t, 0, 3.3))})`;
+		// A second car crossfades in, holds, and hands back to the flagship.
+		const ph1 = inOut(span(t, 3.3, 4.1)) * (1 - inOut(span(t, 4.9, 5.7)));
+		$('ph1').style.opacity = ph1;
+		$('ph1').style.transform = `scale(${1.05 - 0.05 * outCubic(span(t, 3.3, 5.0))})`;
+		$('mark').style.opacity = outCubic(span(t, 0.2, 1.0));
+		// The headline lifts in from behind its masks, a beat apart, as on the portal.
+		W.forEach((w, i) => {
+			const p = outQuart(span(t, 0.7 + i * 0.11, 0.7 + i * 0.11 + 0.95));
+			w.style.transform = `translateY(${108 * (1 - p)}%)`;
+		});
+		$('rule').style.transform = `scaleX(${outCubic(span(t, 1.7, 2.3))})`;
+		const eb = outCubic(span(t, 1.9, 2.6));
+		$('eb').style.opacity = eb;
+		$('eb').style.transform = `translateY(${8 * (1 - eb)}px)`;
+	};
+
+	// Resolves with each photo's size, so render.mjs can refuse the CDN's "Coming soon"
+	// card (the only image there that is not 3:2) or a photo that failed to load.
+	const load = (src) =>
+		new Promise((r) => {
+			const i = new Image();
+			i.onload = () => r({ src, w: i.naturalWidth, h: i.naturalHeight });
+			i.onerror = () => r({ src, w: 0, h: 0 });
+			i.src = src;
+		});
+	window.ready = Promise.all([document.fonts.ready, ...photos.map(load)]).then(([, ...dims]) => {
+		photos.forEach((src, i) => ($('ph' + i).style.backgroundImage = `url("${src}")`));
+		render(0);
+		return { dims, fonts: [...document.fonts].filter((f) => f.status === 'loaded').map((f) => f.family) };
+	});
+</script>
+</body>
+</html>
