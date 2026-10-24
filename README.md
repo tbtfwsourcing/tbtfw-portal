@@ -47,11 +47,12 @@ Every page is static HTML that talks to the Edge Functions from the browser. The
                                   and their parts: TopBar, Step, Dock, BottomSheet, VinField, PhotoSlots
           crm/                    DraftCard, LeadRow, LeadDetail, StageMark, Thread, Confirm, the three tabs
           ui/                     shadcn-svelte components (generated; edit freely, they are yours)
-    static/                       favicon, apple-touch-icon, og.png (share image), manifest, robots, .nojekyll
+    static/                       favicon, apple-touch-icon, og.jpg (link preview), manifest, robots, .nojekyll
     supabase/functions/           Edge Function sources (see below)
     supabase/sql/                 schema and Postgres functions
     docs/voice_prompt.txt         the drafting prompt (also editable live on the Voice tab)
     legacy/                       the previous single-file index.html / leads.html, for reference only
+    scripts/og-preview/           the link preview's animation (anim.html) and its renderer (render.mjs)
 
 ## Working locally
 
@@ -80,10 +81,9 @@ One-time repo setting: **Settings → Pages → Build and deployment → Source:
 - Every draft on the CRM was written by the system and has **not** been sent. Send / Mark sent / Skip are the only
   ways a draft leaves the queue. With a channel off, Open in Messages (or Mail) hands the draft to the device
   prefilled; it still has to be marked sent by hand.
-- One exception, by Garett's decision (Oct 24, 2026): a buyer's first answer goes out on its own when the car
-  they asked for is in inventory, they gave an email, and the draft is clean (lead-enrich v1.6). It waits in the
-  queue as `approved` for five minutes with Send now / Cancel, then lead-enrich sends it through lead-crm.
-  A car we do not have is always a draft for approval, written as a confident sourcing deal.
+- The in-stock auto-email (lead-enrich v1.6) is off: `AUTO_SEND = false` since v1.7, so no customer gets a message
+  without a tap. If it is ever switched back on, such a reply waits in the queue as `approved` for five minutes,
+  and the dashboard shows it with a countdown, Send now and Cancel.
 - The CRM reads its key from `?k=` at runtime and never stores it.
 - Keep the design tokens in `app.css`. Components take their colour from `bg-foreground`, `text-mute`,
   `border-hair`, `text-bone` and friends, not from literal hex values. The palette matches tbtfw.com:
@@ -101,25 +101,63 @@ One-time repo setting: **Settings → Pages → Build and deployment → Source:
 ## Footer and share card
 
 - `SITE.phone`, `SITE.address`, `SITE.hours` in `lib/config.ts` are empty; fill them to show them in the footer.
-- `static/og.png` is the 1200×630 image shown when the link is texted or posted. Replace it with a photographed
-  one whenever there is a better asset; keep the size.
+- The link preview is a still, `static/og.jpg` (`og:image`, 1200×630): the Chiron, the headline and the wordmark.
+  Keep it a still. In iMessage a video (`og:video`) or an animated image opens full screen when tapped, and only
+  the thin strip under it opens the site; both were tried and dropped. A still opens the site on any tap.
+- To change the car, for example when it sells (needs Google Chrome):
+
+      npm run og:preview -- --car 795008
+
+  `--car` takes a stock id from the inventory feed or an inventory photo URL; with no argument it rebuilds the
+  current one. It refuses a "Coming soon" card and rewrites `static/og.jpg` in a few seconds, drawn by
+  `scripts/og-preview/anim.html` at its final frame.
+- Then update `og:image:alt` in `routes/+page.svelte` to describe the new car (the script prints its name),
+  and ship. iMessage caches previews by URL, so check with a fresh link, such as `?v=5` on the end.
 
 ## Edge Functions
 
     ms-auth/            Microsoft sign-in for garett@tbtfw.com (v6)
     lead-intake/        intake API, dedupe, Turnstile, photo uploads (v1.4, deployed version 11)
-    lead-enrich/        every 2 min: grading, inventory-aware drafts, in-stock auto-email (v1.6, deployed version 12)
-    lead-crm/           backend for the CRM; Graph email send, Supabase Auth gate, cancel (v1.5, deployed version 13)
+    lead-enrich/        every 2 min: grading, drafts, follow-ups, replies; emails each lead to Garett (v1.7)
+    lead-crm/           backend for the CRM; Graph email send, Supabase Auth gate, auto-email cancel (v1.5, deployed version 14)
     lead-inbox/         odd minutes: polls the Outlook inbox for replies (v1.0, deployed version 2)
     inventory-sync/     hourly mirror of tbtfw.com inventory (v1.1, deployed version 8)
     spec-inference/     Haiku grader, shared with the board; lead mode (v2.7, deployed version 14)
+    lead-watchdog/      every 5 min: pages Garett when the pipeline breaks (v1.0, see below)
 
-All seven portal functions are in this repo, copied from what was deployed on Oct 24, 2026. The sourcing
+All portal functions are in this repo, copied from what was deployed on Oct 24, 2026. The sourcing
 board's functions (board, *-ingest, auto-verdict, pushover-alerts, ilusso-sitemap-join) live only in Supabase.
 Redeploy with the full file (never a stub) from the dashboard, the Supabase MCP, or
 `supabase functions deploy <name> --project-ref qymkzfhdneukffeilrhx`. verify_jwt: `lead-intake`, `lead-crm`,
 `ms-auth` OFF (they gate themselves); the rest ON. No secrets live in these files; they read
 `Deno.env` and Vault at runtime.
+
+## Lead emails (lead-enrich v1.7)
+
+Nothing is ever sent to a customer on its own: the AI's first reply waits in the queue for a tap (the v1.6
+in-stock auto-email sits behind `AUTO_SEND = false`). Instead every lead is emailed to Garett
+(`LEAD_EMAIL_TO`, default the portal mailbox) through Microsoft Graph right after the AI finishes: a one-line
+summary, **Text / Call / Email / Open in CRM** buttons prefilled with the suggested reply, a copy-paste block of
+the submission, and the AI notes. Leads the AI has not finished, and repeat submissions, are emailed by a
+sweep after 10 minutes, so none is missed. Outlook strips `sms:` links, so Text goes through `static/text.html`,
+which reads the number and message from the URL fragment (never sent to a server) and opens Messages. Resend one
+lead's email: POST `{"lead_email_lead_id": "<uuid>", "force": true}` to lead-enrich.
+
+## Alerts (lead-watchdog)
+
+`lead-watchdog` runs every five minutes (pg_cron job `portal-lead-watchdog-5min`) and sends Garett a
+Pushover alert when something stops working: a real lead that never reached the phone (15 min), Pushover
+rejecting alerts, the Outlook connection failing, background jobs erroring or stopping, the intake API,
+inventory feed, CRM API or site being down (two checks in a row), AI drafts stuck or given up, or inventory
+not syncing for 3 h. It judges outcomes from one read-only RPC, `public.watchdog_signals()`
+(service_role only; SQL in `supabase/sql/2026-10-24_watchdog_signals.sql`). One push per problem, repeated
+every 2 h (critical) or 12 h (warning) while open, then a quiet "resolved". Pushes carry lead refs, never
+customer names. State is `portal_kv` key `watchdog_state`.
+
+- Check it without paging anyone: POST `{"dry_run": true}`. Prove delivery: POST `{"test": true}` (one per
+  10 min). Easiest from SQL: `net.http_post` to the function with the same bearer the cron job uses.
+- Optional second channel: set the function secret `WATCHDOG_HEARTBEAT_URL` to a healthchecks.io ping URL
+  (period 5 min, grace 15 min). It then emails if Supabase, cron or Pushover itself is down.
 
 ## Never commit
 

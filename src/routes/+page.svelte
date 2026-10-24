@@ -21,7 +21,9 @@
 
 	const TITLE = SITE.name + ' // Buy, sell or trade';
 	const DESC = 'Sell your car to TBTFW, or tell us your next one and we will find it. Beverly Hills.';
-	const OG_IMAGE = SITE.portal + 'og.png';
+	// The share card. Keep it a still: in iMessage a video or animated image opens full screen
+	// on tap; a still opens the portal. Rendered by npm run og:preview.
+	const OG_IMAGE = SITE.portal + 'og.jpg';
 
 	const ld = JSON.stringify({
 		'@context': 'https://schema.org',
@@ -107,8 +109,10 @@
 	<meta property="og:description" content={DESC} />
 	<meta property="og:url" content={SITE.portal} />
 	<meta property="og:image" content={OG_IMAGE} />
+	<meta property="og:image:type" content="image/jpeg" />
 	<meta property="og:image:width" content="1200" />
 	<meta property="og:image:height" content="630" />
+	<meta property="og:image:alt" content="A black and orange Bugatti Chiron Super Sport 300+ in the TBTFW showroom. The extraordinary, bought and sold." />
 	<meta name="twitter:card" content="summary_large_image" />
 	<meta name="twitter:title" content={TITLE} />
 	<meta name="twitter:description" content={DESC} />

@@ -1,4 +1,15 @@
-// TBTFW — LEAD ENRICH — Edge Function v1.6 (Oct 24, 2026)
+// TBTFW — LEAD ENRICH — Edge Function v1.7 (Oct 24, 2026)
+// v1.7: NOTHING GOES TO THE CUSTOMER BY ITSELF; GARETT GETS THE LEAD BY EMAIL. Standing
+//       decision (G, Oct 24 2026, replacing v1.6's auto-email): every lead is emailed to
+//       LEAD_EMAIL_TO (default MS_MAILBOX, garett@tbtfw.com) from the portal mailbox through
+//       Microsoft Graph, once, right after enrichment: a one-line summary, Text / Call / Email /
+//       Open buttons (Text through the site's text.html, tel: and mailto:, prefilled with the AI's suggested reply), a
+//       plain copy-paste block of the submission, the AI notes and the suggested reply. The
+//       draft still waits in the queue and only goes out on a tap. SWEEP G emails any lead
+//       still unemailed LEAD_EMAIL_FALLBACK_MINUTES after it was ready (AI stuck or failed,
+//       duplicates, which are never enriched), so no lead is missed. The v1.6 auto-email and
+//       the Resend acknowledgement stay in the code behind AUTO_SEND (false). Body
+//       {"lead_email_lead_id": "..."} emails one lead now (+ "force": true to send it again).
 // v1.6: AUTO-EMAIL WHEN IT IS IN STOCK. Standing decision (G, Oct 24 2026):
 //       the first answer to a buyer whose car is in inventory, and who gave
 //       an email, goes out without approval; everything else stays a draft.
@@ -108,6 +119,16 @@ const INVENTORY_PAGE = "https://www.tbtfw.com/inventory";
 const PREVIEW_MAX = 5;
 // How long an in-stock auto-email waits in the queue, cancellable, before it goes out.
 const AUTO_SEND_MINUTES = 5;
+// v1.7: off. Nothing reaches the customer without Garett's tap (the in-stock auto-email and the
+// Resend acknowledgement both sit behind this).
+const AUTO_SEND = false;
+// v1.7: a ready lead the AI has not finished with is emailed to Garett anyway after this long.
+const LEAD_EMAIL_FALLBACK_MINUTES = 10;
+const GRAPH_SCOPES = "offline_access User.Read Mail.Send Mail.ReadWrite";
+const CRM_DEFAULT_URL = "https://tbtfwsourcing.github.io/tbtfw-portal/leads.html";
+// Email apps (Outlook among them) strip sms: links, so Text goes through this page, which hands
+// the number and the reply (in the fragment, never sent to a server) to Messages.
+const TEXT_PAGE_URL = "https://tbtfwsourcing.github.io/tbtfw-portal/text.html";
 const DEFAULT_VOICE =
   "You are Garett, a salesperson at TBTFW, a family-owned hypercar and luxury dealership in Beverly Hills. You write my CRM messages in MY voice: direct, plain-spoken, short. No sales fluff, no corporate speak, no hype. If it sounds like a salesman wrote it, rewrite it.\n\n" +
   "For every lead, classify BUYER, SELLER, or JUNK first. Draft only. Nothing is ever sent without my explicit approval.\n\n" +
@@ -212,6 +233,10 @@ Deno.serve(async (req: Request) => {
   const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY") || "";
   const RESEND_FROM = Deno.env.get("RESEND_FROM") || DEFAULT_FROM;
   const LEADS_URL = Deno.env.get("PORTAL_LEADS_URL") || "";
+  const MS_TENANT = Deno.env.get("MS_TENANT_ID") || "";
+  const MS_CLIENT_ID = Deno.env.get("MS_CLIENT_ID") || "";
+  const MS_CLIENT_SECRET = Deno.env.get("MS_CLIENT_SECRET") || "";
+  const LEAD_EMAIL_TO = (Deno.env.get("LEAD_EMAIL_TO") || Deno.env.get("MS_MAILBOX") || "").trim();
   if (!SUPABASE_URL || !SERVICE_KEY) return json({ ok: false, error: "platform env missing" }, 500);
 
   const REST = SUPABASE_URL + "/rest/v1";
@@ -315,6 +340,126 @@ Deno.serve(async (req: Request) => {
       await event(leadId, "push_failed", { error: String((e as Error).message || e), title, via: ev });
       return false;
     }
+  }
+
+  // ---- v1.7: the lead email to Garett ---------------------------------------------------
+  // Sent from the portal mailbox (the Outlook account lead-crm sends from) through Microsoft
+  // Graph to LEAD_EMAIL_TO. lead-inbox ignores mail from that mailbox, so it never lands in a
+  // lead's thread. Once per lead ('lead_emailed'); a failed send is retried by SWEEP G.
+  async function graphAccess(): Promise<string> {
+    if (!MS_TENANT || !MS_CLIENT_ID || !MS_CLIENT_SECRET) throw new Error("Microsoft secrets missing");
+    const rr = await fetch(REST + "/rpc/get_ms_refresh_token", { method: "POST", headers: SB, body: "{}" });
+    const refresh = rr.ok ? await rr.json() : null;
+    if (!refresh) throw new Error("mailbox not connected");
+    const form = new URLSearchParams({ client_id: MS_CLIENT_ID, client_secret: MS_CLIENT_SECRET, grant_type: "refresh_token", refresh_token: String(refresh), scope: GRAPH_SCOPES });
+    const r = await fetch("https://login.microsoftonline.com/" + MS_TENANT + "/oauth2/v2.0/token", { method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded" }, body: form });
+    const d = await r.json().catch(() => ({}));
+    if (!r.ok || !d.access_token) throw new Error("Graph token " + r.status + ": " + String(d.error_description || d.error || "").slice(0, 200));
+    if (d.refresh_token && d.refresh_token !== refresh) {
+      try { await fetch(REST + "/rpc/set_ms_refresh_token", { method: "POST", headers: SB, body: JSON.stringify({ p_token: d.refresh_token }) }); } catch (_e) { /* keep the old one */ }
+    }
+    return String(d.access_token);
+  }
+  function prettyPhone(p: unknown): string {
+    const d = String(p || "").replace(/\D/g, "");
+    const ten = d.length === 11 && d.startsWith("1") ? d.slice(1) : d;
+    return ten.length === 10 ? "(" + ten.slice(0, 3) + ") " + ten.slice(3, 6) + "-" + ten.slice(6) : String(p || "");
+  }
+  // Returns what happened ("sent", "already emailed", ...); throws when the send fails.
+  async function leadEmail(leadId: string, force = false): Promise<string> {
+    if (!LEAD_EMAIL_TO) return "no recipient";
+    if (!force && await hasEvent(leadId, "lead_emailed")) return "already emailed";
+    const L = (await sbSelect("leads", "id=eq." + leadId + "&select=*&limit=1"))[0];
+    if (!L) return "lead not found";
+    const isSell = L.kind === "sell";
+    const draft = (await sbSelect("lead_messages", "lead_id=eq." + leadId + "&direction=eq.out&purpose=eq.first_touch&select=channel,subject,body,status&order=created_at.desc&limit=1"))[0] || null;
+    const inv = !isSell && L.stock_id
+      ? (await sbSelect("tbtfw_inventory", "stock_id=eq." + encodeURIComponent(String(L.stock_id)) + "&select=price,vdp_url,active&limit=1"))[0] || null
+      : null;
+
+    const car = [L.year, L.make, L.canon_model || L.model, L.canon_trim || L.trim].filter((x) => x !== null && x !== undefined && String(x).trim() !== "").join(" ");
+    const label = L.status === "duplicate" ? "Repeat" : L.status === "junk" ? "AI thinks junk" : "";
+    const what = isSell
+      ? "Seller offering their " + (car || "car") + (L.mileage !== null && L.mileage !== undefined ? ", " + miles(L.mileage) : "") + (L.asking_price ? ", asking " + money(L.asking_price) : "")
+      : L.stock_id
+        ? "Buyer asking about the " + (car || "car") + " (stock " + L.stock_id + (inv ? (inv.active ? ", in stock" : ", no longer listed") : "") + ")"
+        : "Buyer looking for " + (L.wanted_text ? "“" + String(L.wanted_text).slice(0, 120) + "”" : "a car");
+    const summary = [what, L.contact_pref ? "prefers " + String(L.contact_pref).toLowerCase() : "", L.timeline ? "timeline: " + String(L.timeline).toLowerCase() : "", L.has_trade ? "has a trade-in" : ""].filter(Boolean).join(" · ") + ".";
+    const subject = (label ? "[" + label + "] " : "") + "New lead · " + (isSell ? "SELL" : "BUY") + " · " + (car || String(L.wanted_text || "car").slice(0, 60)) + " · " + (L.full_name || "no name") + " · " + L.ref;
+
+    // The submission as plain lines, to paste into another CRM or a note.
+    const when = new Date(String(L.created_at)).toLocaleString("en-US", { timeZone: "America/Los_Angeles", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
+    const yesNo = (v: unknown) => (v === true ? "yes" : "no");
+    const copy: string[] = [
+      "NEW LEAD " + L.ref + " (" + when + " PT)" + (label ? " [" + label + "]" : ""),
+      "Type: " + (isSell ? "Sell" + (L.trade_group_id ? " (a trade-in)" : "") : "Buy" + (L.has_trade ? " (has a trade-in)" : "")),
+      "Car: " + (isSell ? car : L.stock_id ? car + " · stock " + L.stock_id + (inv && inv.price ? " · " + money(inv.price) : "") : String(L.wanted_text || "not specified")),
+      "Name: " + (L.full_name || ""),
+      "Phone: " + prettyPhone(L.phone),
+      "Email: " + (L.email || ""),
+    ];
+    if (L.contact_pref || L.best_time) copy.push("Prefers: " + [L.contact_pref, L.best_time].filter(Boolean).join(", "));
+    if (L.zip) copy.push("ZIP: " + L.zip);
+    if (L.timeline) copy.push("Timeline: " + L.timeline);
+    if (isSell) {
+      copy.push("VIN: " + (L.vin || "") + " · Mileage: " + miles(L.mileage) + " · Asking: " + money(L.asking_price));
+      copy.push([L.intent ? "Intent: " + L.intent : "", L.condition ? "Condition: " + L.condition : "", L.title_status ? "Title: " + L.title_status : "",
+        typeof L.owner_count === "number" ? "Owners: " + L.owner_count : "", L.has_records === true ? "Service records: yes" : "", "Photos: " + Number(L.photo_count || 0)].filter(Boolean).join(" · "));
+      if (L.mods_text) copy.push("Mods: " + L.mods_text);
+    } else {
+      copy.push("Trade-in: " + yesNo(L.has_trade) + " · Financing: " + yesNo(L.wants_financing));
+    }
+    if (L.message) copy.push("Message: “" + String(L.message).slice(0, 1500) + "”");
+    copy.push("Source: " + (L.source || "direct") + (L.channel ? " (" + L.channel + ")" : ""));
+    if (inv && inv.vdp_url) copy.push("Listing: " + inv.vdp_url);
+
+    const notes: string[] = [];
+    if (L.classification) notes.push("Classified " + L.classification);
+    if (isSell && L.verdict) notes.push("Verdict " + L.verdict + (L.comps_median ? " · US sold median " + money(L.comps_median) + " (n=" + (L.comps_n || 0) + ")" : " · no sold comps"));
+    if (isSell && L.desirability_tier) notes.push("Tier " + L.desirability_tier + (L.desirability_why ? ": " + L.desirability_why : ""));
+    if (L.missing_info) notes.push("Still need: " + L.missing_info);
+    if (L.flag) notes.push("Flag: " + L.flag);
+    if (!L.enriched_at && L.status !== "duplicate") notes.push("The AI has not finished with this lead yet" + (L.enrich_error ? " (" + String(L.enrich_error).slice(0, 160) + ")" : "") + ".");
+
+    // One-tap buttons: Text (via TEXT_PAGE_URL), Call (tel:) and Email (mailto:) open the phone's
+    // own apps, prefilled with the suggested reply.
+    const phone = String(L.phone || "").replace(/[^\d+]/g, "");
+    // A first touch that already went out (sent by hand, or by v1.6) is shown as sent, not suggested.
+    const alreadySent = !!draft && draft.status === "sent";
+    const reply = draft && draft.body && !alreadySent ? String(draft.body) : "";
+    const buttons: { label: string; href: string }[] = [];
+    if (phone) buttons.push({ label: "Text", href: TEXT_PAGE_URL + "#to=" + encodeURIComponent(phone) + (reply ? "&body=" + encodeURIComponent(reply) : "") });
+    if (phone) buttons.push({ label: "Call", href: "tel:" + phone });
+    if (L.email) buttons.push({ label: "Email", href: "mailto:" + String(L.email) + "?subject=" + encodeURIComponent(String((draft && draft.subject) || "Your " + (car || "car") + " — TBTFW")) + (reply ? "&body=" + encodeURIComponent(reply) : "") });
+    buttons.push({ label: "Open in CRM", href: LEADS_URL || CRM_DEFAULT_URL });
+
+    const esc = (s: unknown) => escapeHtml(String(s ?? ""));
+    const cap = "margin:18px 0 6px;font-size:11px;letter-spacing:1px;color:#777;text-transform:uppercase";
+    const html =
+      "<div style=\"font:15px/1.5 -apple-system,Helvetica,Arial,sans-serif;color:#111;max-width:640px\">" +
+      "<p style=\"margin:0 0 4px;font-size:11px;letter-spacing:1px;color:#777;text-transform:uppercase\">New lead " + esc(L.ref) + (label ? " · " + esc(label) : "") + "</p>" +
+      "<p style=\"margin:0 0 16px;font-size:17px;font-weight:600\">" + esc(summary) + "</p>" +
+      "<table role=\"presentation\" cellspacing=\"0\" cellpadding=\"0\" border=\"0\"><tr>" +
+      buttons.map((b) => "<td style=\"padding:0 8px 8px 0\"><a href=\"" + esc(b.href) + "\" style=\"display:inline-block;padding:11px 18px;background:#0a0908;color:#ffffff;text-decoration:none;font-weight:600;font-size:14px;border-radius:6px\">" + esc(b.label) + "</a></td>").join("") +
+      "</tr></table>" +
+      "<p style=\"" + cap + "\">Copy and paste</p>" +
+      "<pre style=\"margin:0;padding:12px 14px;background:#f4f4f2;border-radius:6px;font:13px/1.5 Menlo,Consolas,monospace;white-space:pre-wrap\">" + esc(copy.join("\n")) + "</pre>" +
+      (notes.length ? "<p style=\"" + cap + "\">AI notes</p><ul style=\"margin:0;padding-left:18px\">" + notes.map((n) => "<li>" + esc(n) + "</li>").join("") + "</ul>" : "") +
+      (reply ? "<p style=\"" + cap + "\">Suggested reply (not sent; Text or Email above opens it ready to go)</p>" +
+        "<div style=\"padding:12px 14px;border-left:3px solid #0a0908;background:#fafaf8;white-space:pre-wrap\">" + esc((draft.subject ? "Subject: " + draft.subject + "\n\n" : "") + reply) + "</div>" : "") +
+      (alreadySent ? "<p style=\"" + cap + "\">Already sent to the customer</p>" +
+        "<div style=\"padding:12px 14px;border-left:3px solid #999;background:#fafaf8;white-space:pre-wrap;color:#444\">" + esc((draft.subject ? "Subject: " + draft.subject + "\n\n" : "") + String(draft.body || "")) + "</div>" : "") +
+      "<p style=\"margin:20px 0 0;font-size:12px;color:#888\">" + (alreadySent ? "A first reply already went out (shown above)." : "Nothing was sent to the customer.") + "</p></div>";
+
+    const token = await graphAccess();
+    const r = await fetch("https://graph.microsoft.com/v1.0/me/sendMail", {
+      method: "POST",
+      headers: { Authorization: "Bearer " + token, "Content-Type": "application/json" },
+      body: JSON.stringify({ message: { subject, body: { contentType: "HTML", content: html }, toRecipients: [{ emailAddress: { address: LEAD_EMAIL_TO } }] }, saveToSentItems: false }),
+    });
+    if (r.status !== 202) throw new Error("Graph sendMail " + r.status + ": " + (await r.text()).slice(0, 200));
+    await event(leadId, "lead_emailed", { to: LEAD_EMAIL_TO, label: label || null, has_reply: !!reply, forced: force });
+    return "sent";
   }
   async function askModel(system: string, prompt: string, tools: unknown[], toolName: string, maxTokens = 16000, effort = "medium"): Promise<Json> {
     if (!ANTHROPIC_KEY) throw new Error("ANTHROPIC_KEY secret missing");
@@ -561,7 +706,7 @@ Deno.serve(async (req: Request) => {
   // no stated email preference, which takes a second call, since that version was an email.
   async function firstTouch(L: Json): Promise<{ d: Json; channel: "sms" | "email"; auto: boolean }> {
     const channel = pickChannel(L);
-    if (L.kind !== "sell" && /\S+@\S+\.\S+/.test(String(L.email || ""))) {
+    if (AUTO_SEND && L.kind !== "sell" && /\S+@\S+\.\S+/.test(String(L.email || ""))) {
       const d = await voiceDraft("first_touch", L, "email", [
         "IF THE CAR THEY ASKED FOR IS IN INVENTORY, this email goes to the customer with no one reviewing it: it must be complete, exact and ready to send.",
       ]);
@@ -622,7 +767,7 @@ Deno.serve(async (req: Request) => {
     return json({ ok: true, purged: out });
   }
 
-  const report: Json = { auto_sent: [] as Json[], fallback_pushes: 0, orphan_pushes: 0, stuck_completed: 0, follow_ups: [] as Json[], replies: [] as Json[], enriched: [], errors: [] as string[] };
+  const report: Json = { auto_sent: [] as Json[], lead_emails: [] as Json[], fallback_pushes: 0, orphan_pushes: 0, stuck_completed: 0, follow_ups: [] as Json[], replies: [] as Json[], enriched: [], errors: [] as string[] };
   const errors = report.errors as string[];
   const isId = (v: unknown) => typeof v === "string" && /^[0-9a-fA-F-]{36}$/.test(String(v).trim());
   const forceOne = isId(body.lead_id) ? String(body.lead_id).trim() : null;
@@ -630,6 +775,15 @@ Deno.serve(async (req: Request) => {
   const followOne = isId(body.follow_up_lead_id) ? String(body.follow_up_lead_id).trim() : null;
   const replyOne = isId(body.reply_lead_id) ? String(body.reply_lead_id).trim() : null;
   const sweepsOn = !forceOne && !followOne && !replyOne;
+
+  // v1.7 maintenance: {"lead_email_lead_id": "..."} emails one lead to Garett now ("force": true resends).
+  if (isId(body.lead_email_lead_id) && !PREVIEW_ONLY) {
+    try {
+      return json({ ok: true, v: "1.7", lead_email: await leadEmail(String(body.lead_email_lead_id).trim(), body.force === true) });
+    } catch (e) {
+      return json({ ok: false, v: "1.7", error: String((e as Error).message || e) }, 502);
+    }
+  }
 
   // ---- PREVIEW (v1.5): draft without writing anything but a lead_events row ----------
   // Body {"preview_lead_ids": [...], "preview_kind"?: "first_touch" | "follow_up" | "reply"}.
@@ -688,7 +842,7 @@ Deno.serve(async (req: Request) => {
         return { id, error: String((e as Error).message || e), ms: Date.now() - t0 };
       }
     }));
-    return json({ ok: true, v: "1.6", previews: out });
+    return json({ ok: true, v: "1.7", previews: out });
   }
 
   // ---- SWEEP F (v1.6): send the auto-emails that are due --------------------
@@ -705,6 +859,28 @@ Deno.serve(async (req: Request) => {
         if (!d.ok) errors.push("auto_send " + m.id + ": " + String(d.message || "HTTP " + r.status));
       }
     } catch (e) { errors.push("auto_send: " + String((e as Error).message || e)); }
+  }
+
+  // ---- SWEEP G (v1.7): email Garett about any lead he has not had an email for ------------
+  // Normally the email follows enrichment; this catches the rest after the fallback delay:
+  // duplicates (never enriched), leads the AI is stuck on or gave up, and a failed send.
+  if (sweepsOn) {
+    try {
+      const cutoff = new Date(Date.now() - LEAD_EMAIL_FALLBACK_MINUTES * 60000).toISOString();
+      const since = new Date(Date.now() - 3 * 86400000).toISOString();
+      const ready = await sbSelect("leads", "ready_at=lte." + encodeURIComponent(cutoff) + "&created_at=gte." + encodeURIComponent(since) + "&select=id,ref&order=ready_at.desc&limit=100");
+      if (ready.length) {
+        const sent = await sbSelect("lead_events", "event=eq.lead_emailed&created_at=gte." + encodeURIComponent(since) + "&select=lead_id&limit=1000");
+        const done = new Set(sent.map((e) => String(e.lead_id)));
+        for (const l of ready.filter((x) => !done.has(String(x.id))).slice(0, 5)) {
+          try {
+            (report.lead_emails as Json[]).push({ ref: l.ref, result: await leadEmail(String(l.id)) });
+          } catch (e) {
+            errors.push(String(l.ref) + " lead_email: " + String((e as Error).message || e));
+          }
+        }
+      }
+    } catch (e) { errors.push("lead_emails: " + String((e as Error).message || e)); }
   }
 
   // ---- SWEEP A: five-minute fallback push (plain format) -----------------
@@ -873,7 +1049,7 @@ Deno.serve(async (req: Request) => {
       }
     } catch (e) { errors.push("reply: " + String((e as Error).message || e)); }
   }
-  if (followOne || replyOne) { report.ms = Date.now() - startedAt; return json({ ok: true, v: "1.6", ...report }); }
+  if (followOne || replyOne) { report.ms = Date.now() - startedAt; return json({ ok: true, v: "1.7", ...report }); }
 
   // ---- ENRICHMENT ----------------------------------------------------------
   let leads: Json[] = [];
@@ -984,7 +1160,7 @@ Deno.serve(async (req: Request) => {
 
       // 5. Auto-reply (Resend) — once per lead, only when the key is set; never for junk, and
       //    not when the real answer is already queued to go out by itself.
-      if (!junk && !autoQueued && RESEND_API_KEY && L.email) {
+      if (AUTO_SEND && !junk && !autoQueued && RESEND_API_KEY && L.email) {
         const already = await sbSelect("lead_messages", "lead_id=eq." + id + "&purpose=eq.auto_reply&status=eq.sent&select=id&limit=1");
         if (already.length === 0) {
           const name = firstName(L.full_name);
@@ -1022,7 +1198,7 @@ Deno.serve(async (req: Request) => {
           res.auto_reply = "exists";
         }
       } else {
-        res.auto_reply = junk ? "junk" : autoQueued ? "auto-email queued" : (RESEND_API_KEY ? "no email" : "off");
+        res.auto_reply = junk ? "junk" : autoQueued ? "auto-email queued" : (AUTO_SEND && RESEND_API_KEY ? "no email" : "off");
       }
 
       // 6. Enriched push (sell) — when nobody has been alerted yet, or forced; never for junk.
@@ -1068,6 +1244,16 @@ Deno.serve(async (req: Request) => {
       });
       res.status = done ? (modelErrors.length ? "gave up" : "enriched") : "retry";
       res.model_errors = modelErrors;
+
+      // 8. v1.7: the lead email to Garett, as soon as the lead is done (enriched or given up on).
+      if (done) {
+        try {
+          res.lead_email = await leadEmail(id);
+        } catch (e) {
+          res.lead_email = "failed";
+          errors.push(ref + " lead_email: " + String((e as Error).message || e));
+        }
+      }
     } catch (e) {
       res.error = String((e as Error).message || e);
       try {
@@ -1079,5 +1265,5 @@ Deno.serve(async (req: Request) => {
   }
 
   report.ms = Date.now() - startedAt;
-  return json({ ok: true, v: "1.6", ...report });
+  return json({ ok: true, v: "1.7", ...report });
 });
