@@ -79,10 +79,10 @@
 		line-height: 1.45;
 		pointer-events: none;
 		transition:
-			transform 0.15s ease-out,
-			color 0.15s,
-			font-size 0.15s,
-			letter-spacing 0.15s;
+			transform 0.18s cubic-bezier(0.2, 0.7, 0.2, 1),
+			color 0.18s,
+			font-size 0.18s,
+			letter-spacing 0.18s;
 		transform-origin: left top;
 	}
 	.field input,
@@ -99,6 +99,7 @@
 		line-height: 1.45;
 		color: var(--fg);
 		outline: none;
+		transition: border-color 0.2s;
 	}
 	.field textarea {
 		min-height: 88px;
@@ -118,7 +119,7 @@
 	.field textarea:not(:placeholder-shown) + label {
 		transform: translateY(-16px);
 		font-size: 11px;
-		letter-spacing: 0.08em;
+		letter-spacing: 0.14em;
 		text-transform: uppercase;
 	}
 	.field input:focus + label,
@@ -133,13 +134,15 @@
 		display: block;
 		margin-top: 8px;
 		color: var(--mute);
-		font-size: 13px;
+		font-size: 12.5px;
+		line-height: 1.5;
 	}
 	.fe {
 		display: block;
 		margin-top: 8px;
-		color: var(--fg);
-		font-size: 14px;
+		color: var(--bone);
+		font-size: 13px;
+		line-height: 1.5;
 	}
 	.money input {
 		padding-left: 14px;

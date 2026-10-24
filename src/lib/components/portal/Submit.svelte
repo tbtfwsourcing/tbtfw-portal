@@ -22,19 +22,13 @@
 		{type}
 		{disabled}
 		{onclick}
-		variant="ghost"
-		class="mt-1 block h-auto min-h-[52px] w-full rounded-none border-t border-hair bg-transparent text-[15px] font-normal text-foreground hover:bg-transparent hover:text-bone"
+		variant="quiet"
+		class="mt-2 h-auto min-h-[52px] w-full rounded-none border-t border-hair text-[13px] font-normal tracking-[.04em]"
 	>
 		{@render children()}
 	</Button>
 {:else}
-	<Button
-		{type}
-		disabled={disabled || sending}
-		{onclick}
-		aria-live="polite"
-		class="mt-2 h-14 w-full rounded-none bg-foreground text-[15px] font-medium tracking-[.02em] text-background transition-colors hover:bg-bone hover:text-background disabled:opacity-50"
-	>
+	<Button {type} disabled={disabled || sending} {onclick} variant="house" size="cta" class="mt-2" aria-live="polite">
 		{#if sending}
 			<span class="num">{busy.label}</span>
 		{:else}

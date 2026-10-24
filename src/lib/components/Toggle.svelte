@@ -24,7 +24,7 @@
 
 <label
 	for={id}
-	class="flex min-h-11 cursor-pointer items-start gap-3 py-2.5 text-[15px] {className}"
+	class="flex min-h-11 cursor-pointer items-start gap-3.5 py-2.5 text-[15px] {className}"
 	class:consent
 	class:is-on={checked}
 >
@@ -33,7 +33,7 @@
 		{name}
 		{required}
 		bind:checked
-		class="mt-0.5 size-5 shrink-0 rounded-none border-hair bg-transparent data-checked:border-foreground data-checked:bg-foreground data-checked:text-background focus-visible:ring-0 focus-visible:outline-1 focus-visible:outline-offset-3 focus-visible:outline-bone"
+		class="mt-0.5"
 	/>
 	<span class="text">{@render children()}</span>
 </label>
@@ -41,9 +41,10 @@
 <style>
 	.consent {
 		font-size: 13px;
-		line-height: 1.5;
+		line-height: 1.55;
 		color: var(--mute);
 		padding-top: 18px;
+		transition: color 0.2s;
 	}
 	.consent.is-on {
 		color: var(--fg);

@@ -104,9 +104,11 @@
 	.identity .w {
 		display: block;
 		font-family: var(--font-disp);
-		font-size: 24px;
-		line-height: 1.25;
-		letter-spacing: 0.02em;
+		font-stretch: 118%;
+		font-weight: 500;
+		font-size: 28px;
+		line-height: 1.08;
+		letter-spacing: -0.012em;
 		opacity: 0;
 		transform: translateY(8px);
 	}
@@ -114,11 +116,21 @@
 		animation: settle 320ms ease-out forwards;
 	}
 	.identity .w.y {
-		font-size: 16px;
-		color: var(--mute);
+		font-family: var(--font-sans);
+		font-stretch: normal;
+		font-weight: 500;
+		font-size: 10.5px;
+		letter-spacing: 0.26em;
+		text-transform: uppercase;
+		color: var(--bone);
+		margin-bottom: 8px;
 	}
 	.identity .w.t {
-		font-size: 16px;
+		font-stretch: 108%;
+		font-weight: 400;
+		font-size: 18px;
+		margin-top: 4px;
+		color: var(--mute);
 	}
 	.identity .rule {
 		display: block;

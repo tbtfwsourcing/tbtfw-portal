@@ -171,7 +171,7 @@
 		<input type="text" id="sell-website" bind:value={website} tabindex="-1" autocomplete="off" />
 	</div>
 
-	<h1 class="disp mt-2 mb-5 text-[22px] leading-tight md:text-[26px]">Your car</h1>
+	<h1 class="disp mt-3 mb-7 text-[32px] md:text-[42px]">Your car</h1>
 	<VinField />
 	<FloatField
 		id="mileage"
@@ -195,11 +195,11 @@
 		onblur={() => (f.asking_price = groupDigits(f.asking_price))}
 	/>
 
-	<h2 class="disp mt-10 mb-1 text-xs tracking-[.14em] uppercase">Photos</h2>
-	<p class="mb-3 text-[15px] text-mute">Three or more. Camera or library, your choice.</p>
+	<h2 class="section-head mb-1.5">Photos</h2>
+	<p class="mb-4 text-[14px] text-mute">Three or more. Camera or library, your choice.</p>
 	<PhotoSlots />
 
-	<h2 class="disp mt-10 mb-3 text-xs tracking-[.14em] uppercase">Your details</h2>
+	<h2 class="section-head mb-5">Your details</h2>
 	<FloatField id="sell-full_name" label="Name" type="text" autocomplete="name" required bind:value={f.full_name} bind:ref={nameRef} />
 	<FloatField
 		id="sell-phone"
@@ -234,13 +234,13 @@
 	<Toggle id="sell-consent" consent required bind:checked={f.consent}>
 		I agree to be contacted by {SITE.name} by call, text and email about this inquiry. Message and data rates may apply. Reply STOP to opt out.
 	</Toggle>
-	<p class="-mt-1 mb-6 text-xs text-mute">
+	<p class="-mt-1 mb-6 pl-[34px] text-xs text-mute">
 		We use your details only to reply to this inquiry.
 		<a href={SITE.privacy} target="_blank" rel="noopener" class="text-mute underline underline-offset-2 hover:text-bone">Privacy</a>
 	</p>
 	<div bind:this={tsEl}></div>
+	{#if error}<p class="mb-4 border-l border-bone pl-3 text-[13px] leading-relaxed text-foreground" role="alert">{error}</p>{/if}
 	<Submit disabled={busy.on}>Send my car</Submit>
-	{#if error}<p class="mt-3 text-sm text-foreground" role="alert">{error}</p>{/if}
 </form>
 
 <style>

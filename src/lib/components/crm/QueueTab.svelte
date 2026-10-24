@@ -5,11 +5,11 @@
 	const drafts = $derived(crm.data?.drafts ?? []);
 </script>
 
-<div class="eyebrow mt-6 mb-2.5 text-[10.5px]">
-	Awaiting your approval // <span class="text-foreground">{drafts.length}</span>
+<div class="eyebrow dots mt-7 mb-3">
+	<span>Awaiting your approval</span><span class="text-foreground">{drafts.length}</span>
 </div>
 {#if !drafts.length}
-	<div class="py-6 text-mute">
+	<div class="max-w-[48ch] py-8 text-[14px] leading-relaxed text-mute">
 		Nothing waiting. New leads draft themselves within two minutes of landing; replies and follow-ups land here too.
 	</div>
 {/if}

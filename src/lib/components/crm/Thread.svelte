@@ -6,22 +6,20 @@
 </script>
 
 {#if !messages.length}
-	<div class="mt-2.5 text-xs text-mute">No messages yet.</div>
+	<div class="mt-4 text-xs text-mute">No messages yet.</div>
 {:else}
-	<div class="mt-3 border-t border-hair">
+	<div class="mt-5 border-t border-hair">
 		{#each messages as m, i (i)}
 			{@const isIn = m.direction === 'in'}
 			{@const ok = m.status === 'sent' || m.status === 'received'}
-			<div class="border-b border-hair py-2.5 text-[13.5px]">
-				<div class="eyebrow mb-1 text-[10px] tracking-[.14em]" class:text-bone={isIn}>
-					{isIn ? 'Customer' : 'Garett'} // {m.channel} // {(m.purpose ?? '').replace(/_/g, ' ')} //
-					<span class:text-bone={ok}>{m.status}{m.provider === 'manual' ? ' by hand' : ''}</span>
-					// {ago(m.sent_at ?? m.created_at)}{m.error ? ' // ' + m.error : ''}
+			<div class="border-b border-hair py-3.5 text-[13.5px] leading-relaxed">
+				<div class="eyebrow dots mb-1.5 text-[10px]" class:text-bone={isIn}>
+					<span>{isIn ? 'Customer' : 'Garett'}</span><span>{m.channel}</span>{#if m.purpose}<span>{m.purpose.replace(/_/g, ' ')}</span>{/if}<span class:text-bone={ok}>{m.status}{m.provider === 'manual' ? ' by hand' : ''}</span><span>{ago(m.sent_at ?? m.created_at)}</span>{#if m.error}<span>{m.error}</span>{/if}
 				</div>
 				{#if m.subject && m.channel === 'email'}
-					<div class="text-xs text-mute">{m.subject}</div>
+					<div class="mb-1 text-xs text-mute">{m.subject}</div>
 				{/if}
-				<div class="whitespace-pre-wrap" class:border-l-2={isIn} class:border-bone={isIn} class:pl-2.5={isIn}>
+				<div class="whitespace-pre-wrap" class:border-l={isIn} class:border-bone={isIn} class:pl-3={isIn}>
 					{m.body ?? ''}
 				</div>
 			</div>

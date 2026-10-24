@@ -7,6 +7,8 @@
 	import { Button } from '#lib/components/ui/button/index.js';
 	import { Input } from '#lib/components/ui/input/index.js';
 	import { Textarea } from '#lib/components/ui/textarea/index.js';
+	import * as Card from '#lib/components/ui/card/index.js';
+	import ArrowUpRightIcon from '@lucide/svelte/icons/arrow-up-right';
 	import LeadChips from './LeadChips.svelte';
 	import Confirm from './Confirm.svelte';
 
@@ -75,109 +77,113 @@
 		}
 	}
 
-	const btn =
-		'h-auto rounded-none border border-foreground bg-transparent px-4 py-3 text-[11px] font-normal tracking-[.14em] uppercase text-foreground hover:border-bone hover:bg-transparent hover:text-bone';
-	const btnPrimary =
-		'h-auto rounded-none border border-foreground bg-foreground px-4 py-3 text-[11px] font-normal tracking-[.14em] uppercase text-background hover:border-bone hover:bg-bone hover:text-background';
-	const btnSmall = 'px-3 py-2 text-[10px]';
 </script>
 
-<article class="mb-3 border bg-surface p-4 {hot ? 'border-foreground' : 'border-hair'}">
-	<div class="flex flex-wrap items-baseline gap-x-3.5 gap-y-2">
-		<LeadChips lead={l} purpose={draft.purpose} />
-		<span class="disp text-sm">{identityPlain(l)}</span>
-		<span class="num text-[13px] text-mute">
-			{#if isSell}
-				{miles(l.mileage, 'mileage unknown')} // asking {money(l.asking_price, 'no price')}
-			{:else if l.stock_id}
-				stock {l.stock_id}
-			{:else}
-				{l.wanted_text ?? ''}
-			{/if}
-		</span>
+{#snippet openLead(cls: string)}
+	<button
+		type="button"
+		class="h-9 shrink-0 cursor-pointer items-center gap-1 px-1 text-[10.5px] tracking-[.16em] text-mute uppercase transition-colors hover:text-foreground disabled:opacity-40 {cls}"
+		disabled={working}
+		onclick={() => l.id && openLead(l.id)}
+	>
+		Open lead <ArrowUpRightIcon class="size-3.5" />
+	</button>
+{/snippet}
+
+<Card.Root class="mb-3 block gap-0 p-4 sm:mb-4 sm:p-5 {hot ? 'border-l-2 border-l-bone' : ''}">
+	<!-- Header: the car, then the live numbers under it. Open lead sits top-right from sm:,
+	     and beside the chips on a phone so the car name keeps the full width. -->
+	<div class="flex items-start justify-between gap-4">
+		<div class="min-w-0 flex-1">
+			<div class="disp text-[18px] sm:text-[20px]">{identityPlain(l)}</div>
+			<div class="num dots mt-1.5 text-[12.5px] text-mute">
+				{#if isSell}
+					<span>{miles(l.mileage, 'mileage unknown')}</span><span>asking {money(l.asking_price, 'no price')}</span>
+				{:else if l.stock_id}
+					<span>stock {l.stock_id}</span>
+				{:else if l.wanted_text}
+					<span>{l.wanted_text}</span>
+				{/if}
+			</div>
+		</div>
+		{@render openLead('-mr-1 -mt-1 hidden sm:inline-flex')}
+	</div>
+
+	<div class="mt-3 flex items-start justify-between gap-3">
+		<div class="flex flex-wrap gap-1.5">
+			<LeadChips lead={l} purpose={draft.purpose} />
+		</div>
+		{@render openLead('-mr-1 -mt-1.5 inline-flex sm:hidden')}
 	</div>
 
 	{#if isSell}
-		<div class="num mt-2 text-[12.5px] text-mute">
+		<div class="num dots mt-4 text-[12.5px] text-mute">
 			{#if l.comps_n}
-				US sold median <b class="font-medium text-foreground">{money(l.comps_median, 'no price')}</b> (n={l.comps_n})
+				<span>US sold median <b class="font-medium text-foreground">{money(l.comps_median, 'no price')}</b> (n={l.comps_n})</span>
 			{:else}
-				No sold comps on file
+				<span>No sold comps on file</span>
 			{/if}
-			{#if l.photo_count} // {l.photo_count} photos{/if}
+			{#if l.photo_count}<span>{l.photo_count} photos</span>{/if}
 		</div>
-		{#if l.desirability_why}<div class="mt-1.5 text-[13px]">{l.desirability_why}</div>{/if}
+		{#if l.desirability_why}<div class="mt-2 max-w-[64ch] text-[13.5px] leading-relaxed">{l.desirability_why}</div>{/if}
 	{/if}
 	{#if l.flag}
-		<div class="mt-2 text-[13px] text-bone"><b class="eyebrow mr-2 text-[10px] text-bone">Flag</b>{l.flag}</div>
+		<div class="mt-3 text-[13px] leading-relaxed text-bone"><b class="eyebrow mr-2.5 text-[10px] text-bone">Flag</b>{l.flag}</div>
 	{/if}
 	{#if l.missing_info}
-		<div class="mt-1 text-[13px] text-mute"><b class="eyebrow mr-2 text-[10px]">Missing</b>{l.missing_info}</div>
+		<div class="mt-1.5 text-[13px] leading-relaxed text-mute"><b class="eyebrow mr-2.5 text-[10px]">Missing</b>{l.missing_info}</div>
 	{/if}
 
-	<div class="mt-2 text-[12.5px] text-mute">
-		<b class="font-medium text-foreground">{l.full_name ?? ''}</b> // {l.phone ?? ''} // {l.email ?? ''}{l.zip ? ' // ' + l.zip : ''}{l.contact_pref ? ' // prefers ' + l.contact_pref : ''}
+	<div class="dots mt-4 border-t border-hair pt-4 text-[12.5px] text-mute">
+		<span class="font-medium text-foreground">{l.full_name ?? ''}</span>{#if l.phone}<span class="num whitespace-nowrap">{l.phone}</span>{/if}{#if l.email}<span>{l.email}</span>{/if}{#if l.zip}<span class="num">{l.zip}</span>{/if}{#if l.contact_pref}<span>prefers {l.contact_pref}</span>{/if}
 	</div>
-	{#if l.message}<div class="mt-2 text-[12.5px] text-mute">Their note: {l.message}</div>{/if}
+	{#if l.message}<div class="mt-2 text-[12.5px] leading-relaxed text-mute">Their note: {l.message}</div>{/if}
 	{#if draft.purpose === 'reply' && lastIn}
-		<div class="mt-3 border-b border-hair py-2.5 text-[13.5px]">
-			<div class="eyebrow mb-1 text-[10px] text-bone">Customer // {ago(lastIn.sent_at ?? lastIn.created_at)}</div>
-			<div class="border-l-2 border-bone pl-2.5 whitespace-pre-wrap">{lastIn.body ?? ''}</div>
+		<div class="mt-4 text-[13.5px] leading-relaxed">
+			<div class="eyebrow dots mb-1.5 text-[10px] text-bone"><span>Customer</span><span>{ago(lastIn.sent_at ?? lastIn.created_at)}</span></div>
+			<div class="border-l border-bone pl-3 whitespace-pre-wrap">{lastIn.body ?? ''}</div>
 		</div>
 	{/if}
-	<div class="mt-2 text-[12.5px] text-mute">
-		Ref {l.ref ?? ''} // {l.source ?? ''} // {ago(l.created_at)} // draft for
-		<b class="font-medium text-foreground">{chanWord}</b> to {draft.to_address ?? ''}
+	<div class="dots mt-3 text-[12.5px] text-mute">
+		<span class="num">Ref {l.ref ?? ''}</span>{#if l.source}<span>{l.source}</span>{/if}<span>{ago(l.created_at)}</span><span>draft for <b class="font-medium text-foreground">{chanWord}</b> to {draft.to_address ?? ''}</span>
 	</div>
 
 	{#if ch === 'email'}
-		<Input
-			bind:value={subject}
-			placeholder="Subject"
-			class="mt-2.5 h-auto rounded-none border-hair bg-background px-3 py-2.5 text-sm focus-visible:border-foreground focus-visible:ring-0"
-		/>
+		<Input bind:value={subject} placeholder="Subject" class="mt-4" />
 	{/if}
-	<Textarea
-		bind:value={body}
-		class="mt-2.5 min-h-[150px] rounded-none border-hair bg-background px-3 py-3 text-sm leading-normal focus-visible:border-foreground focus-visible:ring-0"
-	/>
+	<Textarea bind:value={body} class="mt-2.5 min-h-[150px]" />
 
-	<!-- Phone: 2-col grid, primary full width, secondaries in the cells, Open lead on its own
-	     right-aligned row, hint last and full width. From sm: the inline flex-wrap row. -->
-	<div class="mt-3 grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:items-center sm:gap-2.5">
+	<!-- Phone: 2-col grid, primary full width, secondaries in the cells, hint last and full width.
+	     From sm: the inline flex-wrap row. -->
+	<div class="mt-3.5 grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:items-center sm:gap-2.5">
 		{#if chanOn}
 			<Button
-				class="{btnPrimary} col-span-2 w-full sm:col-span-1 sm:w-auto"
+				variant="house"
+				size="house"
+				class="col-span-2 w-full sm:col-span-1 sm:w-auto"
 				disabled={working}
 				onclick={() => (pending = 'send')}
 			>
 				Send {chanWord}
 			</Button>
 		{:else}
-			<Button class="{btnPrimary} col-span-2 w-full sm:col-span-1 sm:w-auto" disabled={working} onclick={copy}>
+			<Button variant="house" size="house" class="col-span-2 w-full sm:col-span-1 sm:w-auto" disabled={working} onclick={copy}>
 				Copy {chanWord}
 			</Button>
-			<Button class="{btn} w-full sm:w-auto" disabled={working} onclick={() => (pending = 'mark')}>
+			<Button variant="hairline" size="house" class="w-full sm:w-auto" disabled={working} onclick={() => (pending = 'mark')}>
 				Mark sent by hand
 			</Button>
 		{/if}
-		<Button class="{btn} w-full sm:w-auto" disabled={working} onclick={() => (pending = 'skip')}>Skip</Button>
-		<Button
-			class="{btn} {btnSmall} col-span-2 justify-self-end sm:col-span-1 sm:justify-self-auto"
-			disabled={working}
-			onclick={() => l.id && openLead(l.id)}
-		>
-			Open lead
-		</Button>
+		<Button variant="hairline" size="house" class="w-full sm:w-auto" disabled={working} onclick={() => (pending = 'skip')}>Skip</Button>
 		{#if !chanOn}
-			<span class="col-span-2 text-xs text-mute">
+			<span class="col-span-2 text-xs leading-relaxed text-mute sm:ml-1">
 				{ch === 'sms'
 					? 'Text sending is off until the number is approved. Copy, send from your phone, then mark it.'
 					: 'Email is off until the mailbox is connected. Copy, send from Outlook, then mark it.'}
 			</span>
 		{/if}
 	</div>
-</article>
+</Card.Root>
 
 {#if pending}
 	{@const c = confirmCopy[pending]}

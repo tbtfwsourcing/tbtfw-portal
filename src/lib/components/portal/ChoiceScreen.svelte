@@ -3,6 +3,7 @@
 	import type { InventoryItem } from '#lib/api/intake.js';
 	import { sized } from '#lib/images.js';
 	import { identityLine } from '#lib/format.js';
+	import ArrowRightIcon from '@lucide/svelte/icons/arrow-right';
 
 	const SHOW_EVERY = 12000;
 	type Key = 'sell' | 'buy';
@@ -110,18 +111,23 @@
 	{#each [['sell', 'Sell my car', 'Tell us what you have. A salesperson will respond within the hour.'], ['buy', 'Find my next car', 'Ask about a car in stock, or tell us what to find.']] as [key, title, lede] (key)}
 		{@const L = layers[key as Key]}
 		<button type="button" class="panel" onclick={() => start(key as Key)}>
+			<span class="index eyebrow">{key === 'sell' ? '01' : '02'}</span>
 			{#if L.a}<img src={L.a} alt={L.useA ? L.alt : ''} class:ready={L.useA} />{/if}
 			{#if L.b}<img src={L.b} alt={!L.useA ? L.alt : ''} class:ready={!L.useA} />{/if}
 			<span class="scrim">
 				<em class="num">{L.cap}</em>
-				<strong class="disp">{title}</strong>
-				<span>{lede}</span>
+				<span class="row">
+					<strong class="disp">{title}</strong>
+					<ArrowRightIcon class="arrow size-4" aria-hidden="true" />
+				</span>
+				<span class="lede">{lede}</span>
 			</span>
 		</button>
 	{/each}
 </div>
 <button type="button" class="tradelink" onclick={() => start('trade')}>
-	Trading in? <span class="text-mute">Start with the car you want.</span>
+	<span>Trading in? <span class="text-mute">Start with the car you want.</span></span>
+	<ArrowRightIcon class="size-3.5 text-mute" aria-hidden="true" />
 </button>
 
 <style>
@@ -130,8 +136,9 @@
 		flex-direction: column;
 		gap: 1px;
 		background: var(--hair);
-		height: calc(100dvh - 120px);
-		min-height: 520px;
+		/* Header (57) + panels + trade link (~66) fit one phone viewport. */
+		height: calc(100dvh - 128px);
+		min-height: 480px;
 	}
 	.panel {
 		position: relative;
@@ -139,12 +146,20 @@
 		flex: 1 1 0;
 		min-height: 0;
 		width: 100%;
-		background: var(--bg);
+		background: var(--surface);
 		border: 0;
 		color: var(--fg);
 		overflow: hidden;
 		cursor: pointer;
 		text-align: left;
+	}
+	.index {
+		position: absolute;
+		top: 18px;
+		left: 20px;
+		z-index: 3;
+		color: var(--fg);
+		opacity: 0.7;
 	}
 	.panel img {
 		position: absolute;
@@ -154,7 +169,9 @@
 		object-fit: cover;
 		opacity: 0;
 		z-index: 1;
-		transition: opacity 1200ms ease-out;
+		transition:
+			opacity 1400ms ease-out,
+			transform 1600ms cubic-bezier(0.2, 0.7, 0.2, 1);
 	}
 	.panel img.ready {
 		opacity: 1;
@@ -166,29 +183,54 @@
 		right: 0;
 		bottom: 0;
 		z-index: 3;
-		background: var(--bg);
-		padding: 16px 20px 18px;
+		padding: 80px 20px 20px;
+		background: linear-gradient(
+			to top,
+			rgba(0, 0, 0, 0.94) 0%,
+			rgba(0, 0, 0, 0.78) 36%,
+			rgba(0, 0, 0, 0.35) 70%,
+			rgba(0, 0, 0, 0) 100%
+		);
 	}
 	.scrim em {
 		display: block;
 		font-style: normal;
-		color: var(--mute);
-		font-size: 12px;
-		letter-spacing: 0.02em;
-		margin-bottom: 6px;
-		min-height: 17px;
+		color: var(--bone);
+		font-size: 10.5px;
+		font-weight: 500;
+		letter-spacing: 0.26em;
+		text-transform: uppercase;
+		margin-bottom: 12px;
+		min-height: 15px;
+	}
+	.row {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 16px;
 	}
 	.scrim strong {
 		display: block;
-		font-size: 20px;
-		letter-spacing: 0.04em;
-		margin-bottom: 4px;
+		font-size: 28px;
+		font-weight: 500;
+		letter-spacing: -0.012em;
+		line-height: 1.05;
 	}
-	.scrim > span {
+	.scrim :global(.arrow) {
+		flex: none;
+		color: var(--fg);
+		opacity: 0.6;
+		transition:
+			transform 400ms cubic-bezier(0.2, 0.7, 0.2, 1),
+			opacity 400ms;
+	}
+	.lede {
 		display: block;
+		margin-top: 10px;
 		color: var(--mute);
 		font-size: 14px;
-		max-width: 36em;
+		line-height: 1.5;
+		max-width: 34em;
 	}
 	.panel:focus-visible {
 		outline: 1px solid var(--bone);
@@ -197,32 +239,52 @@
 	.panel:active .scrim strong {
 		color: var(--bone);
 	}
+	@media (hover: hover) {
+		.panel:hover img.ready {
+			transform: scale(1.03);
+		}
+		.panel:hover :global(.arrow) {
+			transform: translateX(4px);
+			opacity: 1;
+		}
+	}
 	.tradelink {
-		display: block;
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 16px;
 		width: auto;
 		margin: 0 20px;
-		padding: 20px 0;
+		padding: 20px 0 calc(20px + env(safe-area-inset-bottom));
 		background: none;
 		border: 0;
 		border-top: 1px solid var(--hair);
 		color: var(--fg);
-		font-size: 15px;
+		font-size: 14px;
 		text-align: left;
 		cursor: pointer;
+		transition: color 0.2s;
+	}
+	.tradelink:hover {
+		color: var(--bone);
 	}
 	@media (min-width: 720px) {
 		.choice {
 			flex-direction: row;
-			height: min(calc(100dvh - 136px), 720px);
-			min-height: 480px;
+			height: min(calc(100dvh - 136px), 760px);
+			min-height: 520px;
 		}
 		.scrim {
-			padding: 22px 28px 26px;
+			padding: 140px 32px 32px;
 		}
 		.scrim strong {
-			font-size: 26px;
+			font-size: 42px;
 		}
-		.scrim > span {
+		.index {
+			top: 26px;
+			left: 32px;
+		}
+		.lede {
 			font-size: 15px;
 		}
 		.tradelink {

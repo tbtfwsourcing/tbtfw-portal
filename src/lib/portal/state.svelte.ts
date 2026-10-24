@@ -134,13 +134,13 @@ export function railFor(screen: Screen): { label: string; step?: string } {
 	const trade = portal.mode === 'trade';
 	switch (screen) {
 		case 'buy':
-			return trade ? { label: 'TRADE', step: '1 OF 3' } : { label: 'BUY', step: '1 OF 1' };
+			return trade ? { label: 'Trade', step: '1 of 3' } : { label: 'Buy' };
 		case 'sell1':
-			return trade ? { label: 'TRADE', step: '2 OF 3' } : { label: 'SELL', step: '1 OF 2' };
+			return trade ? { label: 'Trade', step: '2 of 3' } : { label: 'Sell', step: '1 of 2' };
 		case 'sell2':
-			return trade ? { label: 'TRADE', step: '3 OF 3' } : { label: 'SELL', step: '2 OF 2' };
+			return trade ? { label: 'Trade', step: '3 of 3' } : { label: 'Sell', step: '2 of 2' };
 		case 'done':
-			return { label: 'SENT' };
+			return { label: 'Sent' };
 		default:
 			return { label: '' };
 	}

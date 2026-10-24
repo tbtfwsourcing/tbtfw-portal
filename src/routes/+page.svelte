@@ -95,8 +95,10 @@
 </svelte:head>
 
 <ProgressLine />
-<header class="mx-auto flex h-14 max-w-[560px] items-center justify-between px-5 pt-[env(safe-area-inset-top)]">
-	<Wordmark />
+<header class="border-b border-hair pt-[env(safe-area-inset-top)]">
+	<div class="mx-auto flex h-14 max-w-[560px] items-center justify-center px-5">
+		<Wordmark />
+	</div>
 </header>
 
 <main class="relative mx-auto max-w-[560px] pb-8">
@@ -130,9 +132,11 @@
 		max-width: 100vw;
 		margin-left: calc(50% - 50vw);
 	}
-	@keyframes inR {
+	/* Each screen arrives as a quiet cascade: blocks rise a few pixels and
+	   settle in sequence, rather than the whole page sliding sideways. */
+	@keyframes rise {
 		from {
-			transform: translateX(24px);
+			transform: translateY(10px);
 			opacity: 0;
 		}
 		to {
@@ -140,20 +144,20 @@
 			opacity: 1;
 		}
 	}
-	@keyframes inL {
-		from {
-			transform: translateX(-24px);
-			opacity: 0;
-		}
-		to {
-			transform: none;
-			opacity: 1;
-		}
+	.screen.fwd > :global(*),
+	.screen.bwd > :global(*) {
+		animation: rise 560ms cubic-bezier(0.2, 0.7, 0.2, 1) both;
 	}
-	.screen.fwd {
-		animation: inR 240ms ease-out;
+	.screen > :global(:nth-child(2)) {
+		animation-delay: 50ms;
 	}
-	.screen.bwd {
-		animation: inL 240ms ease-out;
+	.screen > :global(:nth-child(3)) {
+		animation-delay: 100ms;
+	}
+	.screen > :global(:nth-child(4)) {
+		animation-delay: 150ms;
+	}
+	.screen > :global(:nth-child(n + 5)) {
+		animation-delay: 200ms;
 	}
 </style>

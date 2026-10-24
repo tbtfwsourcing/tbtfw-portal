@@ -34,5 +34,5 @@
 	{:else}
 		<Chip variant="dim">{verdict}</Chip>
 	{/if}
-	{#if lead.desirability_tier}<Chip variant="acc">{lead.desirability_tier}</Chip>{/if}
+	{#if lead.desirability_tier}<Chip variant="accent">{lead.desirability_tier}</Chip>{/if}
 {/if}

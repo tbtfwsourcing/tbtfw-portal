@@ -1,5 +1,6 @@
 import { getQueue, getVoice, type QueueData, type Voice, type Lead } from '#lib/api/crm.js';
 import { identityPlain } from '#lib/format.js';
+import { accessToken, sessionEmail } from './auth.svelte.js';
 
 export type Tab = 'queue' | 'leads' | 'voice';
 
@@ -36,22 +37,31 @@ export function leadById(id: string): Lead | null {
 	return crm.data?.leads.find((l) => l.id === id) ?? null;
 }
 
+export function signedIn(): boolean {
+	return !!accessToken() || !!crm.key;
+}
+
 export async function load(): Promise<void> {
-	if (!crm.key) {
-		crm.blocked = {
-			title: 'No key in the address.',
-			body: 'Open this page with ?k= followed by the portal key from Supabase Vault (PORTAL_KEY).'
-		};
+	// Not signed in and no legacy key: the page shows the sign-in screen instead.
+	if (!signedIn()) {
+		crm.blocked = null;
 		crm.loading = false;
 		return;
 	}
 	try {
 		const r = await getQueue(crm.key);
 		if (r.status === 401) {
-			crm.blocked = {
-				title: 'Bad key.',
-				body: 'The ?k= in the address does not match the portal key. Check it in Supabase Vault (PORTAL_KEY) and reload.'
-			};
+			crm.blocked = accessToken()
+				? {
+						title: 'Not on the list.',
+						body:
+							sessionEmail() +
+							' is signed in but is not allowed into the CRM. Sign out and use your TBTFW address.'
+					}
+				: {
+						title: 'Bad key.',
+						body: 'The ?k= in the address does not match the portal key. Sign in with your TBTFW email instead.'
+					};
 			return;
 		}
 		if (!r.json?.ok) {
