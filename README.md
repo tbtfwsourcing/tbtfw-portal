@@ -43,7 +43,7 @@ Every page is static HTML that talks to the Edge Functions from the browser. The
                                   and their parts: TopBar, Step, Dock, BottomSheet, VinField, PhotoSlots
           crm/                    DraftCard, LeadRow, Thread, LeadChips, Chip, Confirm, the three tabs
           ui/                     shadcn-svelte components (generated; edit freely, they are yours)
-    static/                       favicon, apple-touch-icon, og.mp4 + og.jpg (link preview), manifest, robots, .nojekyll
+    static/                       favicon, apple-touch-icon, og.jpg (link preview), manifest, robots, .nojekyll
     supabase/functions/           Edge Function sources (see below)
     supabase/sql/                 schema and Postgres functions
     docs/voice_prompt.txt         the drafting prompt (also editable live on the Voice tab)
@@ -93,18 +93,23 @@ One-time repo setting: **Settings → Pages → Build and deployment → Source:
 ## Footer and share card
 
 - `SITE.phone`, `SITE.address`, `SITE.hours` in `lib/config.ts` are empty; fill them to show them in the footer.
-- The link preview has two parts. `static/og.mp4` (`og:video`) is a six-second muted clip that iMessage plays in
-  the bubble. `static/og.jpg` (`og:image`) is its last frame: the cover in iMessage, and the only thing every other
-  app shows. Both are 1200×630 and come from `scripts/og-preview/anim.html`.
-- To swap the cars, for example when one of them sells (needs Google Chrome, plus `brew install ffmpeg` once):
+- The link preview is a still, `static/og.jpg` (`og:image`, 1200×630): the Chiron, the headline and the wordmark.
+  A tap on it opens the portal. An `og:video` clip played in iMessage, but a tap then opened the clip instead of
+  the site, so it was dropped. The still is the last frame of `scripts/og-preview/anim.html`.
+- To swap the car, for example when it sells (needs Google Chrome, plus `brew install ffmpeg` once):
 
       npm run og:preview -- --a 795008 --b 795037-BUG
 
-  `--a` is the lead car and the still; `--b` is the car it crossfades to. Each takes a stock id from the inventory
-  feed or an inventory photo URL. It refuses a "Coming soon" card, rewrites `static/og.mp4` and `static/og.jpg`,
-  and takes about 40 seconds. Run it with no arguments to rebuild the current pair.
-- Then update `og:image:alt` in `routes/+page.svelte` to describe the new lead car (the script prints its name),
+  `--a` is the car in the still; `--b` is the car the animation crossfades to (it only shows in `--video` and
+  `--animated` output). Each takes a stock id from the inventory feed or an inventory photo URL. It refuses a
+  "Coming soon" card and rewrites `static/og.jpg` in about 40 seconds. Run it with no arguments to rebuild the
+  current one. `--video` also writes the six-second `og.mp4`; `--animated` writes looping `og.gif` and `og.webp`
+  (needs `brew install webp`).
+- Then update `og:image:alt` in `routes/+page.svelte` to describe the new car (the script prints its name),
   and ship. iMessage caches previews by URL, so check with a fresh link, such as `?v=3` on the end.
+- `static/preview-test/` is a temporary test of animated previews: `/preview-test/gif/` and `/preview-test/webp/`
+  carry the same card with an animated `og:image`. Text them to an iPhone to see whether Messages animates them
+  and still opens the page on tap. Delete the folder once that is decided.
 
 ## Edge Functions
 
