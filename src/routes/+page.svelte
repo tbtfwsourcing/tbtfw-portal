@@ -21,8 +21,8 @@
 
 	const TITLE = SITE.name + ' // Buy, sell or trade';
 	const DESC = 'Sell your car to TBTFW, or tell us your next one and we will find it. Beverly Hills.';
-	// The share card: a still, so a tap on the preview opens the portal. (An og:video made
-	// iMessage open the clip on tap instead of the site.) Rendered by npm run og:preview.
+	// The share card. Keep it a still: in iMessage a video or animated image opens full screen
+	// on tap; a still opens the portal. Rendered by npm run og:preview.
 	const OG_IMAGE = SITE.portal + 'og.jpg';
 
 	const ld = JSON.stringify({
