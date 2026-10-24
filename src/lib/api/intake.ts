@@ -10,6 +10,7 @@ export interface InventoryItem {
 	trim?: string;
 	price?: number | null;
 	mileage?: number | null;
+	color?: string | null;
 	image_url?: string | null;
 }
 

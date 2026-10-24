@@ -1,267 +1,322 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
-	import { portal, go, back, finish, railFor } from '#lib/portal/state.svelte.js';
-	import { busy, setBusy } from '#lib/busy.svelte.js';
-	import { createLead } from '#lib/api/intake.js';
-	import { mountWidget, getToken } from '#lib/portal/turnstile.js';
+	import { untrack } from 'svelte';
+	import { page } from '$app/state';
+	import { portal, back, openSheet, closeSheet, openCar } from '#lib/portal/state.svelte.js';
 	import { sized } from '#lib/images.js';
-	import { digits, identityLine, formatPhone, EMAIL_RE } from '#lib/format.js';
-	import { SITE } from '#lib/config.js';
-	import * as Collapsible from '#lib/components/ui/collapsible/index.js';
-	import * as Card from '#lib/components/ui/card/index.js';
-	import ChevronDownIcon from '@lucide/svelte/icons/chevron-down';
-	import Rail from '#lib/components/Rail.svelte';
+	import { photoOk, probeAll } from '#lib/portal/photos.svelte.js';
+	import { money } from '#lib/format.js';
 	import FloatField from '#lib/components/FloatField.svelte';
-	import ChipGroup from '#lib/components/ChipGroup.svelte';
-	import Toggle from '#lib/components/Toggle.svelte';
-	import InventoryPicker from './InventoryPicker.svelte';
+	import TopBar from './TopBar.svelte';
+	import Dock from './Dock.svelte';
 	import Submit from './Submit.svelte';
+	import AskSheet from './AskSheet.svelte';
+	import SideMenu from './SideMenu.svelte';
+	import ArrowRightIcon from '@lucide/svelte/icons/arrow-right';
 
+	// Any car at all. The showroom is offered along the way, never as the limit.
+	const FEATURED = 12;
 	const f = portal.buyForm;
-	const rail = $derived(railFor('buy'));
-
-	// The car the customer picked, for the summary pinned above the submit button.
-	const picked = $derived(
-		f.stock_id && f.stock_id !== 'other' ? (portal.inv.find((i) => i.stock_id === f.stock_id) ?? null) : null
-	);
 
 	let error = $state('');
-	// Per-field messages. A failed submit focuses the field, which on a phone
-	// scrolls it under the keyboard, so the message has to sit on the field too.
-	let fe = $state<Record<string, string>>({});
-	let website = $state(''); // honeypot
-	let tsEl = $state<HTMLDivElement | null>(null);
-	let nameRef = $state<HTMLInputElement | HTMLTextAreaElement | null>(null);
-	let phoneRef = $state<HTMLInputElement | HTMLTextAreaElement | null>(null);
-	let emailRef = $state<HTMLInputElement | HTMLTextAreaElement | null>(null);
+	let askRef = $state<HTMLInputElement | HTMLTextAreaElement | null>(null);
+	let shown = $state<Record<string, true>>({});
 
-	onMount(() => {
-		if (tsEl) mountWidget('buy', tsEl);
+	// Normally already running (the page starts it shortly after load); this covers a quick tap.
+	$effect(() => {
+		if (portal.invLoaded) untrack(() => probeAll(portal.inv));
 	});
 
-	// Inline checks on blur. Submit re-validates everything regardless.
-	function checkPhone() {
-		fe.phone = f.phone && digits(f.phone).length < 10 ? 'Enter a phone number with area code.' : '';
-	}
-	function checkEmail() {
-		const v = f.email.trim();
-		fe.email = v && !EMAIL_RE.test(v) ? 'Enter a valid email address.' : '';
-	}
-	function fail(field: string, msg: string, ref: { focus(): void } | null) {
-		error = msg;
-		fe[field] = msg;
-		ref?.focus();
-	}
+	// Showroom cars that match what the customer is typing: every word has to appear
+	// somewhere in year, make, model or trim, so "porsche gt3" finds the GT3 RS.
+	const matches = $derived.by(() => {
+		const words = f.wanted_text.toLowerCase().split(/\s+/).filter((w) => w.length > 1);
+		if (!words.length) return [];
+		return portal.inv
+			.map((car, i) => ({ car, i, hay: [car.year, car.make, car.model, car.trim].join(' ').toLowerCase() }))
+			.filter((m) => words.every((w) => m.hay.includes(w)))
+			.slice(0, 3);
+	});
 
-	// The 400px rendition may not exist for every car; fall back to the full image.
-	function thumbFallback(e: Event) {
-		const img = e.currentTarget as HTMLImageElement;
-		const full = picked?.image_url;
-		if (full && img.src !== full) img.src = full;
-	}
+	// Cars with a verified photo, in showroom order. The row stops at the first car not
+	// checked yet, so cards only ever append and never reshuffle as the check runs.
+	const featured = $derived.by(() => {
+		const out: { car: (typeof portal.inv)[number]; i: number }[] = [];
+		for (const [i, car] of portal.inv.entries()) {
+			const ok = photoOk[car.stock_id];
+			if (ok === undefined && car.image_url) break;
+			if (ok) out.push({ car, i });
+			if (out.length >= FEATURED) break;
+		}
+		return out;
+	});
 
-	async function submit(e: SubmitEvent) {
+	function find(e: SubmitEvent) {
 		e.preventDefault();
-		if (busy.on) return;
 		error = '';
-		fe = {};
-		const stockId = f.stock_id && f.stock_id !== 'other' ? f.stock_id : '';
-		const wanted = f.wanted_text.trim();
-		if (!stockId && !wanted) {
-			error = 'Pick a car, or choose "something not listed" and tell us what you want.';
+		if (!f.wanted_text.trim()) {
+			error = "Tell us the car you're after.";
+			askRef?.focus();
 			return;
 		}
-		if (!f.full_name.trim()) return fail('name', 'Enter your name.', nameRef);
-		if (digits(f.phone).length < 10) return fail('phone', 'Enter a phone number with area code.', phoneRef);
-		if (!EMAIL_RE.test(f.email.trim())) return fail('email', 'Enter a valid email address.', emailRef);
-		if (!f.consent) {
-			error = 'Check the agreement box to send this.';
-			return;
-		}
-		const body: Record<string, unknown> = {
-			kind: 'buy',
-			source: portal.source,
-			website,
-			stock_id: stockId,
-			wanted_text: stockId ? '' : wanted,
-			full_name: f.full_name.trim(),
-			phone: f.phone.trim(),
-			email: f.email.trim(),
-			message: f.message.trim(),
-			has_trade: f.has_trade,
-			timeline: f.timeline,
-			wants_financing: f.wants_financing,
-			zip: digits(f.zip),
-			contact_pref: f.contact_pref,
-			best_time: f.best_time.trim(),
-			consent: true
-		};
-		setBusy(true, 'Sending');
-		try {
-			const t = await getToken('buy');
-			if (t) body.turnstile_token = t;
-			const r = await createLead(body);
-			if (!r.ok) throw new Error(r.message || 'Could not send.');
-			const inv = portal.inv.find((i) => i.stock_id === stockId);
-			portal.buy = {
-				ref: r.ref ?? '',
-				id: r.lead_id ?? '',
-				identity: r.identity ?? {},
-				stock: stockId,
-				wanted,
-				photo: inv ? sized(inv.image_url, 1280) : null
-			};
-			setBusy(false);
-			if (f.has_trade) {
-				portal.mode = 'trade';
-				portal.tradeGroupId = r.trade_group_id ?? '';
-				portal.sellForm.full_name = body.full_name as string;
-				portal.sellForm.phone = body.phone as string;
-				portal.sellForm.email = body.email as string;
-				portal.sellForm.consent = true;
-				go('sell1');
-			} else {
-				finish(
-					portal.buy.ref,
-					portal.buy.photo,
-					identityLine(portal.buy.identity) || (wanted ? 'Wanted // ' + wanted : ''),
-					''
-				);
-			}
-		} catch (err) {
-			setBusy(false);
-			error =
-				err instanceof Error && err.message
-					? err.message
-					: 'Something went wrong. Check your connection and try again.';
-		}
+		f.stock_id = 'other';
+		openSheet('ask');
+	}
+
+
+	// From the side menu's "Something else": back to the field this screen is built around.
+	function askAny() {
+		closeSheet();
+		setTimeout(() => askRef?.focus(), 320);
 	}
 </script>
 
-<Rail label={rail.label} step={rail.step} onback={() => back('buy')} />
-<form onsubmit={submit} novalidate>
-	<div class="hp" aria-hidden="true">
-		<label for="buy-website">Leave this empty</label>
-		<input type="text" id="buy-website" bind:value={website} tabindex="-1" autocomplete="off" />
+<form class="find" onsubmit={find} novalidate>
+	<TopBar onback={() => back('buy')} />
+	<div class="body rise">
+		<p class="eyebrow">Find my next car</p>
+		<h1 class="disp q">What's your next car?</h1>
+		<p class="lede">Any make, any model, any spec. If it exists, we'll find it.</p>
+		<div class="field-wrap">
+			<FloatField
+				id="find"
+				label="The car you want"
+				type="text"
+				autocomplete="off"
+				autocapitalize="words"
+				enterkeyhint="go"
+				hint={error ? undefined : 'A 992 GT3 RS in Shark Blue. A Pagani. Anything.'}
+				error={error}
+				bind:value={f.wanted_text}
+				bind:ref={askRef}
+				oninput={() => (error = '')}
+			/>
+		</div>
+
+		{#if matches.length}
+			<div class="matches" aria-live="polite">
+				<p class="eyebrow text-bone">In the showroom now</p>
+				{#each matches as { car, i } (car.stock_id)}
+					<button type="button" class="match" onclick={() => openCar(i)}>
+						<span class="min-w-0">
+							<span class="disp-sm block truncate text-[16px]">{car.year} {car.model}{car.trim ? ' ' + car.trim : ''}</span>
+							<span class="num mt-1 block text-[12px] text-mute">{money(car.price, 'Price on request')}</span>
+						</span>
+						<ArrowRightIcon class="size-4 shrink-0 text-mute" aria-hidden="true" />
+					</button>
+				{/each}
+			</div>
+		{/if}
+
+		{#if featured.length}
+			<section class="featured" aria-labelledby="featured-h">
+				<div class="flex items-center justify-between">
+					<h2 class="section-head mt-0" id="featured-h">From the showroom</h2>
+					<button type="button" class="see" onclick={() => openSheet('menu')}>See them all</button>
+				</div>
+				<div class="cards">
+					{#each featured as { car, i } (car.stock_id)}
+						<button type="button" class="card" onclick={() => openCar(i)}>
+							<span class="ph">
+								<img
+									class:ready={shown[car.stock_id]}
+									src={sized(car.image_url, 800)}
+									alt=""
+									decoding="async"
+									onload={() => (shown[car.stock_id] = true)}
+								/>
+							</span>
+							<span class="eyebrow mt-3 block">{car.year} &nbsp;{car.make}</span>
+							<span class="disp-sm mt-1.5 block truncate text-[15px]">{car.model}</span>
+							<span class="num mt-1 block text-[13px] text-bone">{money(car.price, 'Price on request')}</span>
+						</button>
+					{/each}
+				</div>
+			</section>
+		{/if}
 	</div>
 
-	<h1 class="disp mt-3 mb-7 text-[32px] md:text-[42px]">Which car</h1>
-	<InventoryPicker />
-
-	<h2 class="section-head mb-5">Your details</h2>
-	<FloatField
-		id="buy-full_name"
-		label="Name"
-		type="text"
-		autocomplete="name"
-		autocapitalize="words"
-		required
-		bind:value={f.full_name}
-		bind:ref={nameRef}
-		error={fe.name}
-		oninput={() => (fe.name = '')}
-	/>
-	<FloatField
-		id="buy-phone"
-		label="Phone"
-		type="tel"
-		autocomplete="tel"
-		inputmode="tel"
-		required
-		bind:value={f.phone}
-		bind:ref={phoneRef}
-		error={fe.phone}
-		oninput={(e: Event & { currentTarget: HTMLInputElement }) => {
-			f.phone = formatPhone(e.currentTarget.value);
-			fe.phone = '';
-		}}
-		onblur={checkPhone}
-	/>
-	<FloatField
-		id="buy-email"
-		label="Email"
-		type="email"
-		autocomplete="email"
-		autocapitalize="none"
-		autocorrect="off"
-		inputmode="email"
-		required
-		bind:value={f.email}
-		bind:ref={emailRef}
-		error={fe.email}
-		oninput={() => (fe.email = '')}
-		onblur={checkEmail}
-	/>
-	<FloatField
-		textarea
-		id="buy-message"
-		label="Message"
-		rows={3}
-		hint="Is it still available, can I see it Saturday, what is the service history"
-		bind:value={f.message}
-	/>
-
-	<Collapsible.Root class="my-2 mb-8 border-y border-hair">
-		<Collapsible.Trigger
-			class="flex min-h-[56px] w-full cursor-pointer items-center justify-between text-[14px] text-foreground transition-colors hover:text-bone [&[data-state=open]>svg]:rotate-180"
-		>
-			A few more details
-			<ChevronDownIcon class="size-3.5 text-mute transition-transform duration-300" />
-		</Collapsible.Trigger>
-		<Collapsible.Content class="pt-1 pb-4">
-			<Toggle id="has_trade" bind:checked={f.has_trade}>I have a trade-in</Toggle>
-			<ChipGroup name="timeline" label="Timeline" options={['This week', '30 days', 'Just looking']} bind:value={f.timeline} />
-			<Toggle id="wants_financing" bind:checked={f.wants_financing}>I would like financing options</Toggle>
-			<FloatField id="buy-zip" label="ZIP" type="text" inputmode="numeric" maxlength={5} autocomplete="postal-code" bind:value={f.zip} />
-			<ChipGroup name="contact_pref" label="Reach me by" options={['Text', 'Call', 'Email']} bind:value={f.contact_pref} />
-			<FloatField id="buy-best_time" label="Best time" type="text" bind:value={f.best_time} />
-		</Collapsible.Content>
-	</Collapsible.Root>
-
-	<Card.Root size="sm" class="mb-6 gap-3">
-		<Card.Content>
-		<p class="eyebrow mb-3">Asking about</p>
-		<div class="flex items-center gap-4">
-			{#if picked?.image_url}
-				<img
-					src={sized(picked.image_url, 400)}
-					alt=""
-					width="64"
-					height="48"
-					class="h-12 w-16 shrink-0 object-cover"
-					onerror={thumbFallback}
-				/>
-			{/if}
-			{#if picked}
-				<p class="disp-sm text-[15px]">{identityLine(picked)}</p>
-			{:else if f.stock_id === 'other'}
-				<p class="disp-sm text-[15px]">Something not listed</p>
-			{:else}
-				<p class="disp-sm text-[15px] text-mute">Pick a car above</p>
-			{/if}
-		</div>
-		</Card.Content>
-	</Card.Root>
-
-	<Toggle id="buy-consent" consent required bind:checked={f.consent}>
-		I agree to be contacted by {SITE.name} by call, text and email about this inquiry. Message and data rates may apply. Reply STOP to opt out.
-	</Toggle>
-	<p class="-mt-1 mb-6 pl-[34px] text-xs text-mute">
-		We use your details only to reply to this inquiry.
-		<a href={SITE.privacy} target="_blank" rel="noopener" class="text-mute underline underline-offset-2 hover:text-bone">Privacy</a>
-	</p>
-	<div bind:this={tsEl}></div>
-	{#if error}<p class="mb-4 border-l border-bone pl-3 text-[13px] leading-relaxed text-foreground" role="alert">{error}</p>{/if}
-	<Submit disabled={busy.on}>Ask about this car</Submit>
+	<Dock>
+		<Submit>Find it for me</Submit>
+		{#snippet below()}<span>A specialist replies within the hour</span>{/snippet}
+	</Dock>
 </form>
 
+<SideMenu onpick={(i) => openCar(i, true)} onany={askAny} />
+<AskSheet open={page.state.sheet === 'ask'} car={null} />
+
 <style>
-	.hp {
-		position: absolute;
-		left: -9999px;
-		top: -9999px;
-		width: 1px;
-		height: 1px;
+	.find {
+		display: flex;
+		flex-direction: column;
+		min-height: 100dvh;
+	}
+	.body {
+		width: 100%;
+		max-width: 640px;
+		margin: 0 auto;
+		padding: 40px 24px 8px;
+	}
+	.q {
+		margin-top: 14px;
+		font-size: 36px;
+		text-wrap: balance;
+	}
+	.lede {
+		margin-top: 14px;
+		max-width: 30em;
+		font-size: 14px;
+		line-height: 1.55;
+		color: var(--mute);
+	}
+	.field-wrap {
+		margin-top: 36px;
+	}
+	/* The ask is the point of the screen, so its field reads a size up. */
+	.field-wrap :global(input) {
+		font-size: 20px;
+	}
+	.matches {
+		margin: -4px 0 8px;
+		animation: show 360ms ease-out both;
+	}
+	.match {
+		display: flex;
+		width: 100%;
+		align-items: center;
+		justify-content: space-between;
+		gap: 16px;
+		min-height: 60px;
+		margin-top: 8px;
+		padding: 10px 0;
+		border-bottom: 1px solid var(--hair);
+		text-align: left;
+		color: var(--fg);
+		cursor: pointer;
+		transition: color 0.2s;
+	}
+	.match:hover,
+	.match:active {
+		color: var(--bone);
+	}
+	.featured {
+		margin-top: 40px;
+	}
+	.see {
+		min-height: 44px;
+		font-size: 12px;
+		color: var(--fg);
+		text-decoration: underline;
+		text-decoration-color: var(--hair-strong);
+		text-underline-offset: 4px;
+		cursor: pointer;
+	}
+	.see:hover {
+		text-decoration-color: var(--bone);
+	}
+	/* Cards run to the screen edge so the row reads as swipeable. */
+	.cards {
+		display: flex;
+		gap: 10px;
+		margin: 12px -24px 0;
+		padding: 0 24px 4px;
+		overflow-x: auto;
+		scroll-snap-type: x mandatory;
+		scroll-padding-inline: 24px;
+		overscroll-behavior-x: contain;
+		scrollbar-width: none;
+	}
+	.cards::-webkit-scrollbar {
+		display: none;
+	}
+	.card {
+		flex: 0 0 62%;
+		max-width: 240px;
+		scroll-snap-align: start;
+		text-align: left;
+		color: var(--fg);
+		cursor: pointer;
+	}
+	.ph {
+		display: block;
+		aspect-ratio: 4 / 3;
+		overflow: hidden;
+		background: var(--surface);
+	}
+	.ph img {
+		width: 100%;
+		height: 100%;
+		object-fit: cover;
+		object-position: 50% 62%;
 		opacity: 0;
+		transition:
+			opacity 600ms ease-out,
+			transform 900ms cubic-bezier(0.2, 0.7, 0.2, 1);
+	}
+	.ph img.ready {
+		opacity: 1;
+	}
+	.card {
+		animation: show 500ms ease-out both;
+	}
+	@media (hover: hover) {
+		.card:hover .ph img {
+			transform: scale(1.04);
+		}
+	}
+	.card:active .ph img {
+		transform: scale(0.98);
+	}
+	@keyframes show {
+		from {
+			opacity: 0;
+		}
+	}
+	@media (min-width: 600px) and (max-width: 899px) {
+		.body {
+			padding: 56px 40px 8px;
+		}
+		.q {
+			font-size: 46px;
+		}
+		.cards {
+			margin: 12px -40px 0;
+			padding: 0 40px 4px;
+			scroll-padding-inline: 40px;
+		}
+		.card {
+			flex-basis: 40%;
+		}
+	}
+	@media (min-width: 900px) {
+		.body {
+			padding-top: 9vh;
+		}
+		.q {
+			font-size: 52px;
+		}
+		.lede {
+			font-size: 15px;
+		}
+		.field-wrap {
+			margin-top: 48px;
+		}
+		.field-wrap :global(input) {
+			font-size: 24px;
+		}
+		.card {
+			flex-basis: 30%;
+		}
+	}
+	/* Wide but short (a foldable or tablet in landscape): tighter, so the fields clear the pinned button. */
+	@media (min-width: 900px) and (max-height: 760px) {
+		.body {
+			padding-top: 28px;
+		}
+		.q {
+			font-size: 40px;
+		}
+		.field-wrap {
+			margin-top: 28px;
+		}
 	}
 </style>

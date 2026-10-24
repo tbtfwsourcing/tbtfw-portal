@@ -6,18 +6,21 @@
 	import { getInventory } from '#lib/api/intake.js';
 	import { INTAKE_API, IMAGE_CDN } from '#lib/config.js';
 	import { loadTurnstile } from '#lib/portal/turnstile.js';
+	import { probeAll } from '#lib/portal/photos.svelte.js';
 	import { SITE } from '#lib/config.js';
-	import Wordmark from '#lib/components/Wordmark.svelte';
 	import ProgressLine from '#lib/components/ProgressLine.svelte';
-	import Footer from '#lib/components/Footer.svelte';
 	import ChoiceScreen from '#lib/components/portal/ChoiceScreen.svelte';
 	import BuyScreen from '#lib/components/portal/BuyScreen.svelte';
-	import SellScreen from '#lib/components/portal/SellScreen.svelte';
+	import ShowroomScreen from '#lib/components/portal/ShowroomScreen.svelte';
+	import SellCar from '#lib/components/portal/SellCar.svelte';
+	import SellNumbers from '#lib/components/portal/SellNumbers.svelte';
+	import SellPhotos from '#lib/components/portal/SellPhotos.svelte';
+	import SellYou from '#lib/components/portal/SellYou.svelte';
 	import DetailsScreen from '#lib/components/portal/DetailsScreen.svelte';
 	import DoneScreen from '#lib/components/portal/DoneScreen.svelte';
 
-	const TITLE = SITE.name + ' // Portal';
-	const DESC = 'Sell your car to TBTFW or ask about a car in stock. Beverly Hills.';
+	const TITLE = SITE.name + ' // Buy, sell or trade';
+	const DESC = 'Sell your car to TBTFW, or tell us your next one and we will find it. Beverly Hills.';
 	const OG_IMAGE = SITE.portal + 'og.png';
 
 	const ld = JSON.stringify({
@@ -42,10 +45,11 @@
 	let prev: Screen = 'choice';
 
 	// Screen follows the shallow-routing state so Back/Forward walk the flow.
-	// Leaving the confirmation always lands on "choice": a sent form cannot be re-entered.
+	// Leaving the confirmation lands on "choice": a sent form cannot be re-entered.
+	// The one exception is the confirmation's own link into the showroom.
 	$effect(() => {
 		let next: Screen = page.state.screen ?? 'choice';
-		if (prev === 'done' && next !== 'done') {
+		if (prev === 'done' && next !== 'done' && !page.state.restart) {
 			next = 'choice';
 			untrack(() => goto(location.href, { state: { screen: 'choice' }, shallow: true, replace: true }));
 		}
@@ -64,6 +68,8 @@
 			.then((d) => {
 				portal.inv = d.items;
 				portal.past = d.past;
+				// Know which cars have real photos before anyone opens the showroom.
+				setTimeout(() => probeAll(d.items), 1500);
 			})
 			.catch(() => {
 				portal.inv = [];
@@ -76,9 +82,13 @@
 
 	const labels: Record<Screen, string> = {
 		choice: 'Choose',
-		buy: 'Buy',
-		sell1: 'Sell, your car',
-		sell2: 'Sell, tell us more',
+		buy: 'Find my next car',
+		showroom: 'Showroom',
+		'sell-car': 'Sell, your car',
+		'sell-numbers': 'Sell, mileage and price',
+		'sell-photos': 'Sell, photos',
+		'sell-you': 'Sell, your details',
+		'sell-more': 'Sell, tell us more',
 		done: 'Sent'
 	};
 </script>
@@ -107,22 +117,25 @@
 </svelte:head>
 
 <ProgressLine />
-<header class="border-b border-hair pt-[env(safe-area-inset-top)]">
-	<div class="mx-auto flex h-14 max-w-[560px] items-center justify-center px-5">
-		<Wordmark />
-	</div>
-</header>
 
-<main class="relative mx-auto max-w-[560px] pb-8">
+<main class="relative">
 	{#key screen}
-		<section class="screen {dir}" class:bleed={screen === 'choice'} aria-label={labels[screen]}>
+		<section class="screen {dir}" aria-label={labels[screen]}>
 			{#if screen === 'choice'}
 				<ChoiceScreen />
 			{:else if screen === 'buy'}
 				<BuyScreen />
-			{:else if screen === 'sell1'}
-				<SellScreen />
-			{:else if screen === 'sell2'}
+			{:else if screen === 'showroom'}
+				<ShowroomScreen />
+			{:else if screen === 'sell-car'}
+				<SellCar />
+			{:else if screen === 'sell-numbers'}
+				<SellNumbers />
+			{:else if screen === 'sell-photos'}
+				<SellPhotos />
+			{:else if screen === 'sell-you'}
+				<SellYou />
+			{:else if screen === 'sell-more'}
 				<DetailsScreen />
 			{:else}
 				<DoneScreen />
@@ -131,45 +144,29 @@
 	{/key}
 </main>
 
-<Footer />
-
 <style>
-	.screen {
-		padding: 0 20px;
-	}
-	/* The choice screen's two panels run edge to edge. */
-	.screen.bleed {
-		padding: 0;
-		width: 100vw;
-		max-width: 100vw;
-		margin-left: calc(50% - 50vw);
-	}
-	/* Each screen arrives as a quiet cascade: blocks rise a few pixels and
-	   settle in sequence, rather than the whole page sliding sideways. */
+	/* Screens arrive as a quiet cascade: the blocks inside a .rise container lift
+	   a few pixels and settle in sequence, rather than the page sliding sideways. */
 	@keyframes rise {
 		from {
 			transform: translateY(10px);
 			opacity: 0;
 		}
-		to {
-			transform: none;
-			opacity: 1;
-		}
 	}
-	.screen.fwd > :global(*),
-	.screen.bwd > :global(*) {
-		animation: rise 560ms cubic-bezier(0.2, 0.7, 0.2, 1) both;
+	.screen.fwd :global(.rise > *),
+	.screen.bwd :global(.rise > *) {
+		animation: rise 620ms cubic-bezier(0.2, 0.7, 0.2, 1) both;
 	}
-	.screen > :global(:nth-child(2)) {
-		animation-delay: 50ms;
+	.screen :global(.rise > :nth-child(2)) {
+		animation-delay: 60ms;
 	}
-	.screen > :global(:nth-child(3)) {
-		animation-delay: 100ms;
+	.screen :global(.rise > :nth-child(3)) {
+		animation-delay: 120ms;
 	}
-	.screen > :global(:nth-child(4)) {
-		animation-delay: 150ms;
+	.screen :global(.rise > :nth-child(4)) {
+		animation-delay: 180ms;
 	}
-	.screen > :global(:nth-child(n + 5)) {
-		animation-delay: 200ms;
+	.screen :global(.rise > :nth-child(n + 5)) {
+		animation-delay: 240ms;
 	}
 </style>
