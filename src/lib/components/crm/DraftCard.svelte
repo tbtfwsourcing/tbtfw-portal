@@ -30,6 +30,41 @@
 	// svelte-ignore state_referenced_locally
 	let subject = $state(draft.subject ?? '');
 	const edited = $derived(body !== (draft.body ?? '') || (ch === 'email' && subject !== (draft.subject ?? '')));
+	// An in-stock auto-email (status 'approved') counts down to approved_at, then the backend
+	// sends it on its next two-minute tick. Cancel turns it into an ordinary draft.
+	const auto = $derived(draft.status === 'approved');
+	let now = $state(Date.now());
+	$effect(() => {
+		if (!auto) return;
+		const t = setInterval(() => (now = Date.now()), 1000);
+		return () => clearInterval(t);
+	});
+	const left = $derived(auto && draft.approved_at ? Math.max(0, Date.parse(draft.approved_at) - now) : 0);
+	const countdown = $derived(Math.floor(left / 60000) + ':' + String(Math.floor((left % 60000) / 1000)).padStart(2, '0'));
+	let cancelling = $state(false);
+
+	async function cancelAuto() {
+		cancelling = true;
+		try {
+			const r = await api.cancel(crm.key, draft.id);
+			if (r.json?.ok) {
+				const it = crm.data?.drafts.find((d) => d.id === draft.id);
+				if (it) {
+					it.status = 'draft';
+					it.approved_at = null;
+				}
+				toast.success('Auto-send cancelled. It is a draft now.');
+			} else {
+				toast.error(r.json?.message ?? 'Failed (HTTP ' + r.status + ').');
+				load();
+			}
+		} catch {
+			toast.error('No response from the backend.');
+		} finally {
+			cancelling = false;
+		}
+	}
+
 	type Act = 'send' | 'mark' | 'skip';
 	// Which action is in flight, so its button can say so.
 	let working = $state<null | Act>(null);
@@ -148,7 +183,11 @@
 	<!-- What this draft is, and the way out to its lead. -->
 	<header class="flex items-center justify-between gap-4 border-b border-hair py-1 pr-2 pl-4 sm:pl-5">
 		<div class="mlabel dots min-w-0">
-			<span class="text-foreground"><i class="mr-2 inline-block size-1.5 rounded-full bg-bone align-[1px]" aria-hidden="true"></i>{purposeLabel(draft.purpose)}</span><span>{isSell ? 'Sell' : 'Buy'}</span>{#if l.classification}<span class="hidden sm:inline">{l.classification}</span>{/if}{#if l.verdict}<span class={hot ? 'text-bone' : ''}>{l.verdict}</span>{/if}{#if l.desirability_tier}<span class="hidden sm:inline">{l.desirability_tier}</span>{/if}<span>{ago(draft.created_at ?? l.created_at)}</span>
+			{#if auto}
+				<span class="text-bone"><i class="mr-2 inline-block size-1.5 animate-pulse rounded-full bg-bone align-[1px]" aria-hidden="true"></i>Auto-email</span>
+			{:else}
+				<span class="text-foreground"><i class="mr-2 inline-block size-1.5 rounded-full bg-bone align-[1px]" aria-hidden="true"></i>{purposeLabel(draft.purpose)}</span>
+			{/if}<span>{isSell ? 'Sell' : 'Buy'}</span>{#if l.classification}<span class="hidden sm:inline">{l.classification}</span>{/if}{#if l.verdict}<span class={hot ? 'text-bone' : ''}>{l.verdict}</span>{/if}{#if l.desirability_tier}<span class="hidden sm:inline">{l.desirability_tier}</span>{/if}<span>{ago(draft.created_at ?? l.created_at)}</span>
 		</div>
 		<button
 			type="button"
@@ -224,9 +263,27 @@
 				{/if}
 			</div>
 
+			{#if auto}
+				<div class="mt-4 flex items-baseline justify-between gap-3 border border-bone/40 px-3.5 py-3">
+					<p class="text-[13px] leading-snug">
+						{left > 0 ? 'Goes out by itself in' : 'Going out now.'}
+						{#if left > 0}<span class="mono ml-1 text-bone">{countdown}</span>{/if}
+						<span class="block text-[12px] text-mute">In stock, so it needs no approval. Cancel to keep it as a draft.</span>
+					</p>
+				</div>
+				{#if edited}<p class="mt-2 text-[12px] text-bone">The auto-send uses the original text. Send now to use your edit.</p>{/if}
+			{/if}
+
 			<!-- Phone: primary full width, the rest in two cells. From sm: one row, Skip pushed right. -->
 			<div class="mt-4 grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:items-center sm:gap-2.5">
-				{#if chanOn}
+				{#if auto}
+					<Button variant="house" size="house" class="w-full gap-2.5 sm:w-auto" disabled={!!working || cancelling} onclick={() => (pending = 'send')}>
+						<SendIcon class="size-3.5" />{working === 'send' ? 'Sending' : 'Send now'}
+					</Button>
+					<Button variant="hairline" size="house" class="w-full sm:w-auto" disabled={!!working || cancelling} onclick={cancelAuto}>
+						{cancelling ? 'Cancelling' : 'Cancel auto-send'}
+					</Button>
+				{:else if chanOn}
 					<Button
 						variant="house"
 						size="house"
@@ -254,14 +311,14 @@
 				<Button
 					variant="quiet"
 					size="house"
-					class="w-full sm:ml-auto sm:w-auto {chanOn ? 'col-span-2' : ''}"
+					class="w-full sm:ml-auto sm:w-auto {chanOn || auto ? 'col-span-2' : ''}"
 					disabled={!!working}
 					onclick={() => (pending = 'skip')}
 				>
 					{working === 'skip' ? 'Skipping' : 'Skip'}
 				</Button>
 			</div>
-			{#if !chanOn}
+			{#if !chanOn && !auto}
 				<p class="mt-3 text-[12px] leading-relaxed text-mute">
 					{ch === 'sms'
 						? 'Text sending is off until the number is approved. Send it from your phone, then mark it sent.'

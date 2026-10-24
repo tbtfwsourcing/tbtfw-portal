@@ -4,8 +4,8 @@
 	import { carName, ago } from '#lib/format.js';
 	import StageMark from './StageMark.svelte';
 
-	// One line of the list. `waiting`: a draft for this lead is in the queue.
-	let { lead, active = false, waiting = false }: { lead: Lead; active?: boolean; waiting?: boolean } = $props();
+	// One line of the list. `waiting`: what this lead has in the queue, a draft or a queued auto-email.
+	let { lead, active = false, waiting }: { lead: Lead; active?: boolean; waiting?: string } = $props();
 
 	const last = $derived((lead.messages ?? []).at(-1));
 	const theirMove = $derived(last?.direction === 'in');
@@ -33,7 +33,7 @@
 	</div>
 	{#if waiting || theirMove || lead.flag}
 		<div class="mlabel mt-2 flex items-center gap-3 normal-case tracking-normal">
-			{#if waiting}<span class="shrink-0 text-bone">Draft waiting</span>{:else if theirMove}<span class="shrink-0 text-bone">They wrote {ago(last?.sent_at ?? last?.created_at)}</span>{/if}
+			{#if waiting}<span class="shrink-0 text-bone">{waiting === 'approved' ? 'Auto-email queued' : 'Draft waiting'}</span>{:else if theirMove}<span class="shrink-0 text-bone">They wrote {ago(last?.sent_at ?? last?.created_at)}</span>{/if}
 			{#if lead.flag}<span class="min-w-0 truncate text-mute">{lead.flag}</span>{/if}
 		</div>
 	{/if}

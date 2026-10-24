@@ -76,6 +76,9 @@ export interface Draft {
 	body?: string;
 	to_address?: string;
 	created_at?: string;
+	// 'approved' is an in-stock auto-email waiting to go out at approved_at; Cancel turns it back into a draft.
+	status?: 'draft' | 'approved';
+	approved_at?: string | null;
 }
 
 export interface QueueData {
@@ -156,5 +159,6 @@ export const crm = {
 		post(key, '/message/' + id + '/send', { body, subject }),
 	mark: (key: string, id: string, body: string, subject: string | null) =>
 		post(key, '/message/' + id + '/mark', { body, subject }),
-	skip: (key: string, id: string) => post(key, '/message/' + id + '/skip', {})
+	skip: (key: string, id: string) => post(key, '/message/' + id + '/skip', {}),
+	cancel: (key: string, id: string) => post(key, '/message/' + id + '/cancel', {})
 };

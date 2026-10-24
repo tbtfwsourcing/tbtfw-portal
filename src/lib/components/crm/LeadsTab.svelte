@@ -25,7 +25,8 @@
 			.map((s) => ({ id: s, label: s, n: pool.filter((l) => (l.status ?? 'new') === s).length }))
 			.filter((s) => s.id !== 'duplicate' || s.n)
 	]);
-	const waiting = $derived(new Set((crm.data?.drafts ?? []).map((d) => d.lead_id)));
+	// lead id -> 'draft' or 'approved' (an auto-email counting down), for the row's note.
+	const waiting = $derived(new Map((crm.data?.drafts ?? []).map((d) => [d.lead_id, d.status ?? 'draft'])));
 
 	const selected = $derived(leads.find((l) => l.id === crm.openId) ?? (wide.current ? leads[0] : undefined));
 
@@ -97,7 +98,7 @@
 			<div class="px-4 py-10 text-[13.5px] text-mute">Nothing matches.</div>
 		{/if}
 		{#each leads as l (l.id)}
-			<LeadRow lead={l} active={selected?.id === l.id} waiting={waiting.has(l.id)} />
+			<LeadRow lead={l} active={selected?.id === l.id} waiting={waiting.get(l.id)} />
 		{/each}
 	</div>
 	{#if wide.current}

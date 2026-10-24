@@ -68,12 +68,23 @@ const leads: Lead[] = [
 		model: 'Revuelto', mileage: 900, asking_price: 640000, photo_count: 6, enriched_at: null, messages: []
 	},
 	{
+		id: id(8), kind: 'buy', ref: 'TB-261024-0011', source: 'site', status: 'new', classification: 'BUYER',
+		created_at: at(0.05), full_name: 'Olivia Grant', email: 'olivia@example.com', contact_pref: 'Email',
+		wanted_text: 'G-Wagon', message: 'Do you have any G-Wagons right now?', messages: []
+	},
+	{
 		id: id(7), kind: 'buy', ref: 'TB-261020-0005', source: 'direct', status: 'junk', classification: 'JUNK',
 		created_at: at(4 * 24), full_name: 'asdf', email: 'asdf@example.com', wanted_text: 'test', messages: []
 	}
 ];
 
 const drafts: Draft[] = [
+	{
+		id: id(100), lead_id: id(8), channel: 'email', purpose: 'first_touch', to_address: 'olivia@example.com', created_at: at(0.05),
+		status: 'approved', approved_at: new Date(Date.now() + 4 * 60000 + 20000).toISOString(),
+		subject: 'G-Class at TBTFW',
+		body: 'Hi Olivia,\n\nThank you for reaching out. We have two in the showroom right now:\n\n2025 Mercedes-AMG G 700 in MANUFAKTUR Night Black Magno, 8,172 miles: https://www.tbtfw.com/vehicle-details/example-g700\n2026 Mercedes-AMG G 63 in Obsidian Black Metallic, 2,334 miles: https://www.tbtfw.com/vehicle-details/example-g63\n\nWould you like to see one of them in person this week?\n\nGarett'
+	},
 	{
 		id: id(101), lead_id: id(2), channel: 'email', purpose: 'reply', to_address: 'sofia@example.com', created_at: at(2.9),
 		subject: 'Re: Your Senna',
@@ -121,6 +132,9 @@ export function installDemo(): void {
 		}
 		if (path === '/voice') return reply({ ok: true, ...voice });
 		const m = path.match(/^\/message\/([^/]+)\/(send|mark|skip)$/);
+		const c = path.match(/^\/message\/([^/]+)\/cancel$/);
+		const queued = c && drafts.find((d) => d.id === c[1]);
+		if (queued) Object.assign(queued, { status: 'draft', approved_at: null });
 		if (m) gone.add(m[1]);
 		const w = path.match(/^\/lead\/([^/]+)\/(status|note|owner)$/);
 		const lead = w && leads.find((l) => l.id === w[1]);

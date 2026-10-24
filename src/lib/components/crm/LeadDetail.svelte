@@ -24,7 +24,8 @@
 	const isSell = $derived(lead.kind === 'sell');
 	const status = $derived(lead.status ?? 'new');
 	const stages = $derived((crm.data?.stages ?? DEFAULT_STAGES).filter((s) => s !== 'junk' && s !== 'duplicate'));
-	const drafts = $derived((crm.data?.drafts ?? []).filter((d) => d.lead_id === lead.id).length);
+	const queued = $derived((crm.data?.drafts ?? []).filter((d) => d.lead_id === lead.id));
+	const drafts = $derived(queued.length);
 
 	// svelte-ignore state_referenced_locally
 	let owner = $state(lead.assigned_to ?? '');
@@ -163,7 +164,10 @@
 				crm.openId = null;
 			}}
 		>
-			{drafts === 1 ? 'A draft is' : drafts + ' drafts are'} waiting for your approval <ArrowRightIcon class="size-3.5" />
+			{queued.every((d) => d.status === 'approved')
+				? 'An auto-email is queued to go out'
+				: drafts === 1 ? 'A draft is waiting for your approval' : drafts + ' drafts are waiting for your approval'}
+			<ArrowRightIcon class="size-3.5" />
 		</button>
 	{/if}
 

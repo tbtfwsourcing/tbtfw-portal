@@ -17,7 +17,7 @@
 			<li class="relative pb-5 pl-5 last:pb-0">
 				<i class="absolute top-[5px] left-[-3.5px] size-1.5 rounded-full {isIn ? 'bg-bone' : 'bg-hair-strong'}" aria-hidden="true"></i>
 				<div class="mlabel dots">
-					<span class={isIn ? 'text-bone' : 'text-foreground'}>{isIn ? 'Customer' : 'Garett'}</span><span>{m.channel === 'sms' ? 'text' : m.channel}</span>{#if m.purpose && !isIn}<span>{purposeLabel(m.purpose)}</span>{/if}{#if !isIn}<span class={failed ? 'text-bone' : ''}>{m.status}{m.provider === 'manual' ? ' by hand' : ''}</span>{/if}<span>{ago(m.sent_at ?? m.created_at)}</span>
+					<span class={isIn ? 'text-bone' : 'text-foreground'}>{isIn ? 'Customer' : 'Garett'}</span><span>{m.channel === 'sms' ? 'text' : m.channel}</span>{#if m.purpose && !isIn}<span>{purposeLabel(m.purpose)}</span>{/if}{#if !isIn}<span class={failed || m.status === 'approved' ? 'text-bone' : ''}>{m.status === 'approved' ? 'auto-email queued' : m.status}{m.provider === 'manual' ? ' by hand' : ''}</span>{/if}<span>{ago(m.sent_at ?? m.created_at)}</span>
 				</div>
 				{#if m.subject && m.channel === 'email'}
 					<p class="mt-1.5 text-[12.5px] text-mute">{m.subject}</p>
