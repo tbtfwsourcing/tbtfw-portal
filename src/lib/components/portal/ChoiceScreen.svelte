@@ -3,107 +3,78 @@
 	import { portal, start } from '#lib/portal/state.svelte.js';
 	import type { InventoryItem } from '#lib/api/intake.js';
 	import { sized } from '#lib/images.js';
-	import { identityLine } from '#lib/format.js';
+	import { FULL, record } from '#lib/portal/photos.svelte.js';
+	import { SITE } from '#lib/config.js';
+	import TopBar from './TopBar.svelte';
 	import ArrowRightIcon from '@lucide/svelte/icons/arrow-right';
 
-	const SHOW_EVERY = 12000;
-	type Key = 'sell' | 'buy';
+	const HEADLINE = 'The extraordinary, bought and sold.';
+	const words = HEADLINE.split(' ');
+	const SHOW_EVERY = 8000;
+	const year = new Date().getFullYear();
 
-	interface Layer {
-		a: string;
-		b: string;
-		useA: boolean;
-		alt: string;
-		cap: string;
-		current: InventoryItem | null;
-	}
-	const blank = (): Layer => ({ a: '', b: '', useA: false, alt: '', cap: '', current: null });
-	let layers = $state<Record<Key, Layer>>({ sell: blank(), buy: blank() });
-
-	const pools: Record<Key, InventoryItem[]> = { sell: [], buy: [] };
-	const idx: Record<Key, number> = { sell: 0, buy: 0 };
-	let timer: ReturnType<typeof setInterval> | null = null;
-	let tick = 0;
+	// Two stacked images, crossfaded: the incoming one loads hidden, then takes over.
+	let a = $state('');
+	let b = $state('');
+	let useA = $state(false);
 	let started = false;
 
-	function shuffle<T>(a: T[]): T[] {
-		for (let i = a.length - 1; i > 0; i--) {
+	// The first car leads (inventory is sorted by price, so it is the flagship);
+	// the rest of current and past inventory follow in a shuffled order.
+	function order(items: InventoryItem[]): InventoryItem[] {
+		const pool = items.filter((i) => i?.image_url);
+		const rest = pool.slice(1);
+		for (let i = rest.length - 1; i > 0; i--) {
 			const j = Math.floor(Math.random() * (i + 1));
-			[a[i], a[j]] = [a[j], a[i]];
+			[rest[i], rest[j]] = [rest[j], rest[i]];
 		}
-		return a;
-	}
-
-	// Slow crossfade through current and past inventory. The first two cars
-	// lead each panel; the rest are shuffled so returning visitors see variety.
-	function slide(k: Key) {
-		const pool = pools[k];
-		if (!pool.length) return;
-		const other: Key = k === 'sell' ? 'buy' : 'sell';
-		let item = pool[idx[k] % pool.length];
-		idx[k]++;
-		if (pool.length > 1 && layers[other].current?.stock_id === item.stock_id) {
-			item = pool[idx[k] % pool.length];
-			idx[k]++;
-		}
-		const w = window.innerWidth > 720 ? 1920 : 1280;
-		let src = sized(item.image_url, w);
-		const pre = new Image();
-		pre.onload = () => {
-			const L = layers[k];
-			const incomingA = !L.useA;
-			if (incomingA) L.a = src;
-			else L.b = src;
-			L.useA = incomingA;
-			L.alt = [item.year, item.make, item.model].filter(Boolean).join(' ');
-			L.cap = identityLine(item);
-			L.current = item;
-		};
-		pre.onerror = () => {
-			if (src !== item.image_url && item.image_url) {
-				src = item.image_url;
-				pre.src = src;
-			}
-		};
-		pre.src = src;
+		return pool.length ? [pool[0], ...rest] : [];
 	}
 
 	function startShow(items: InventoryItem[]) {
-		const pool = items.filter((i) => i && i.image_url);
+		const pool = order(items);
 		if (!pool.length) return;
-		const hero = pool.slice(0, 2);
-		const rest = pool.slice(2);
-		pools.sell = [hero[0], ...shuffle(rest.slice())];
-		pools.buy = [hero[1] ?? hero[0], ...shuffle(rest.slice())];
-		slide('sell');
-		slide('buy');
+		let n = 0;
+		let tries = 0;
+		let timer: ReturnType<typeof setTimeout> | undefined;
+		let stopped = false;
 		const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-		if (reduced || pool.length < 2) return;
-		const run = () => {
-			tick++;
-			slide(tick % 2 ? 'sell' : 'buy');
+
+		// Loads the next car; "Coming soon" cards are skipped, never shown.
+		const next = () => {
+			if (stopped || tries > pool.length) return;
+			const item = pool[n++ % pool.length];
+			tries++;
+			const pre = new Image();
+			pre.onload = () => {
+				if (stopped) return;
+				if (!record(item.stock_id, pre)) return next();
+				tries = 0;
+				const incomingA = !useA;
+				if (incomingA) a = pre.src;
+				else b = pre.src;
+				useA = incomingA;
+				if (!reduced && pool.length > 1) timer = setTimeout(next, SHOW_EVERY);
+			};
+			pre.onerror = () => next();
+			pre.src = sized(item.image_url, FULL);
 		};
-		const on = () => {
-			if (!timer) timer = setInterval(run, SHOW_EVERY / 2);
+		next();
+
+		const vis = () => {
+			if (document.hidden) clearTimeout(timer);
+			else if (!reduced) timer = setTimeout(next, SHOW_EVERY);
 		};
-		const off = () => {
-			if (timer) {
-				clearInterval(timer);
-				timer = null;
-			}
-		};
-		on();
-		const vis = () => (document.hidden ? off() : on());
 		document.addEventListener('visibilitychange', vis);
 		return () => {
-			off();
+			stopped = true;
+			clearTimeout(timer);
 			document.removeEventListener('visibilitychange', vis);
 		};
 	}
 
-	// Only invLoaded is tracked. slide() reads `layers`, and if the effect
-	// tracked that too, the first image to load would re-run it: the cleanup
-	// would clear the interval and the early return would never restart it.
+	// Only invLoaded is tracked: startShow writes a/b/useA, and tracking those
+	// would re-run the effect and restart the show on every image.
 	$effect(() => {
 		if (!portal.invLoaded || started) return;
 		started = true;
@@ -111,198 +82,253 @@
 	});
 </script>
 
-<div class="choice">
-	{#each [['sell', 'Sell my car', 'Tell us what you have. A salesperson will respond within the hour.'], ['buy', 'Find my next car', 'Ask about a car in stock, or tell us what to find.']] as [key, title, lede] (key)}
-		{@const L = layers[key as Key]}
-		<button type="button" class="panel" onclick={() => start(key as Key)}>
-			<span class="index eyebrow">{key === 'sell' ? '01' : '02'}</span>
-			{#if L.a}<img src={L.a} alt={L.useA ? L.alt : ''} class:ready={L.useA} />{/if}
-			{#if L.b}<img src={L.b} alt={!L.useA ? L.alt : ''} class:ready={!L.useA} />{/if}
-			<span class="scrim">
-				<em class="num">{L.cap}</em>
-				<span class="row">
-					<strong class="disp">{title}</strong>
-					<ArrowRightIcon class="arrow size-4" aria-hidden="true" />
+<div class="home">
+	<div class="hero" aria-hidden="true">
+		{#if a}<img src={a} alt="" class:on={useA} />{/if}
+		{#if b}<img src={b} alt="" class:on={!useA} />{/if}
+		<div class="scrim"></div>
+	</div>
+
+	<TopBar overlay />
+
+	<div class="content">
+		<h1 class="disp headline" aria-label={HEADLINE}>
+			{#each words as w, i (i)}<span class="mask" aria-hidden="true"><span class="w" style:--i={i}>{w}</span></span>{' '}{/each}
+		</h1>
+		<p class="lede">Beverly Hills. A specialist replies within the hour.</p>
+
+		<nav class="choices" aria-label="What would you like to do">
+			<button type="button" class="choice" onclick={() => start('buy')}>
+				<span>
+					<span class="disp-sm t">Find my next car</span>
+					<span class="s">Any car. Ours, or one we find for you.</span>
 				</span>
-				<span class="lede">{lede}</span>
-			</span>
-		</button>
-	{/each}
+				<ArrowRightIcon class="arrow size-[18px]" aria-hidden="true" />
+			</button>
+			<button type="button" class="choice" onclick={() => start('sell')}>
+				<span>
+					<span class="disp-sm t">Sell or trade mine</span>
+					<span class="s">Four quick steps</span>
+				</span>
+				<ArrowRightIcon class="arrow size-[18px]" aria-hidden="true" />
+			</button>
+		</nav>
+
+		<footer class="fine">
+			<a href={SITE.home}>tbtfw.com</a>
+			<a href={SITE.privacy} target="_blank" rel="noopener">Privacy</a>
+			<span class="num">&copy; {year} {SITE.name}</span>
+		</footer>
+	</div>
 </div>
-<button type="button" class="tradelink" onclick={() => start('trade')}>
-	<span>Trading in? <span class="text-mute">Start with the car you want.</span></span>
-	<ArrowRightIcon class="size-3.5 text-mute" aria-hidden="true" />
-</button>
 
 <style>
-	.choice {
+	.home {
+		position: relative;
 		display: flex;
 		flex-direction: column;
-		gap: 1px;
-		background: var(--hair);
-		/* Header (57) + panels + trade link (~66) fit one phone viewport; the top inset only exists full screen from the home screen. */
-		height: calc(100dvh - 128px - env(safe-area-inset-top));
-		min-height: 480px;
-	}
-	.panel {
-		position: relative;
-		display: block;
-		flex: 1 1 0;
-		min-height: 0;
-		width: 100%;
-		background: var(--surface);
-		border: 0;
-		color: var(--fg);
+		min-height: 100dvh;
 		overflow: hidden;
-		cursor: pointer;
-		text-align: left;
-		-webkit-user-select: none;
-		user-select: none;
-		-webkit-touch-callout: none;
 	}
-	.index {
+	.hero {
 		position: absolute;
-		top: 18px;
-		left: 20px;
-		z-index: 3;
-		color: var(--fg);
-		opacity: 0.7;
+		top: 0;
+		left: 0;
+		right: 0;
+		height: 66dvh;
+		min-height: 380px;
+		overflow: hidden;
+		background: var(--surface);
 	}
-	.panel img {
+	.hero img {
 		position: absolute;
 		inset: 0;
 		width: 100%;
 		height: 100%;
 		object-fit: cover;
+		object-position: 46% 64%;
 		opacity: 0;
-		z-index: 1;
-		transition:
-			opacity 1400ms ease-out,
-			transform 1600ms cubic-bezier(0.2, 0.7, 0.2, 1);
+		transition: opacity 1600ms ease-out;
 	}
-	.panel img.ready {
+	/* The incoming photo fades up while it settles from a slight push-in. */
+	.hero img.on {
 		opacity: 1;
-		z-index: 2;
+		z-index: 1;
+		animation: settle 9000ms cubic-bezier(0.2, 0.6, 0.2, 1) both;
 	}
 	.scrim {
 		position: absolute;
-		left: 0;
-		right: 0;
-		bottom: 0;
-		z-index: 3;
-		padding: 80px 20px 20px;
+		inset: 0;
+		z-index: 2;
 		background: linear-gradient(
-			to top,
-			rgba(0, 0, 0, 0.94) 0%,
-			rgba(0, 0, 0, 0.78) 36%,
-			rgba(0, 0, 0, 0.35) 70%,
-			rgba(0, 0, 0, 0) 100%
+			to bottom,
+			rgba(5, 5, 5, 0.86) 0%,
+			rgba(5, 5, 5, 0.22) 26%,
+			rgba(5, 5, 5, 0.1) 48%,
+			rgba(5, 5, 5, 0.82) 82%,
+			var(--bg) 100%
 		);
 	}
-	.scrim em {
-		display: block;
-		font-style: normal;
-		color: var(--bone);
-		font-size: 10.5px;
-		font-weight: 500;
-		letter-spacing: 0.26em;
-		text-transform: uppercase;
-		margin-bottom: 12px;
-		min-height: 15px;
+	.content {
+		position: relative;
+		z-index: 3;
+		margin-top: auto;
+		padding: 0 24px calc(8px + env(safe-area-inset-bottom));
 	}
-	.row {
+	.headline {
+		font-size: 36px;
+		text-wrap: balance;
+	}
+	/* Each word rises from behind its own mask, a few beats apart. The resting
+	   state is the final one, so with motion off the headline simply shows. */
+	.mask {
+		display: inline-block;
+		overflow: hidden;
+		vertical-align: top;
+		padding-bottom: 0.08em;
+		margin-bottom: -0.08em;
+	}
+	.w {
+		display: inline-block;
+		animation: up 1000ms cubic-bezier(0.2, 0.75, 0.15, 1) calc(250ms + var(--i) * 90ms) both;
+	}
+	.lede {
+		margin-top: 14px;
+		font-size: 13px;
+		line-height: 1.55;
+		color: var(--mute);
+		animation: show 900ms ease-out 850ms both;
+	}
+	.choices {
+		margin-top: 44px;
+		animation: show 900ms ease-out 1000ms both;
+	}
+	.choice {
 		display: flex;
+		width: 100%;
 		align-items: center;
 		justify-content: space-between;
 		gap: 16px;
-	}
-	.scrim strong {
-		display: block;
-		font-size: 28px;
-		font-weight: 500;
-		letter-spacing: -0.012em;
-		line-height: 1.05;
-	}
-	.scrim :global(.arrow) {
-		flex: none;
+		padding: 18px 0;
+		border-top: 1px solid var(--hair-strong);
+		text-align: left;
 		color: var(--fg);
-		opacity: 0.6;
+		cursor: pointer;
+	}
+	.choice:last-child {
+		border-bottom: 1px solid var(--hair-strong);
+	}
+	.choice .t {
+		display: block;
+		font-size: 20px;
+		transition: color 0.3s;
+	}
+	.choice .s {
+		display: block;
+		margin-top: 6px;
+		font-size: 12px;
+		color: var(--mute);
+	}
+	.choice :global(.arrow) {
+		flex: none;
+		opacity: 0.7;
 		transition:
 			transform 400ms cubic-bezier(0.2, 0.7, 0.2, 1),
-			opacity 400ms;
+			opacity 0.3s;
 	}
-	.lede {
-		display: block;
-		margin-top: 10px;
-		color: var(--mute);
-		font-size: 14px;
-		line-height: 1.5;
-		max-width: 34em;
-	}
-	.panel:focus-visible {
-		outline: 1px solid var(--bone);
-		outline-offset: -2px;
-	}
-	.panel:active .scrim strong,
-	.tradelink:active {
+	.choice:active .t {
 		color: var(--bone);
 	}
+	.choice:focus-visible {
+		outline-offset: 2px;
+	}
 	@media (hover: hover) {
-		.panel:hover img.ready {
-			transform: scale(1.03);
+		.choice:hover .t {
+			color: var(--bone);
 		}
-		.panel:hover :global(.arrow) {
-			transform: translateX(4px);
+		.choice:hover :global(.arrow) {
+			transform: translateX(5px);
 			opacity: 1;
 		}
 	}
-	.tradelink {
+	.fine {
 		display: flex;
-		align-items: center;
-		justify-content: space-between;
-		gap: 16px;
-		width: auto;
-		margin: 0 20px;
-		padding: 20px 0 calc(20px + env(safe-area-inset-bottom));
-		background: none;
-		border: 0;
-		border-top: 1px solid var(--hair);
-		color: var(--fg);
-		font-size: 14px;
-		text-align: left;
-		cursor: pointer;
+		gap: 22px;
+		padding: 18px 0 8px;
+		font-size: 11px;
+		letter-spacing: 0.06em;
+		color: var(--mute);
+		animation: show 900ms ease-out 1150ms both;
+	}
+	.fine a {
+		color: var(--mute);
+		text-decoration: none;
 		transition: color 0.2s;
 	}
-	.tradelink:hover {
-		color: var(--bone);
+	.fine a:hover {
+		color: var(--fg);
 	}
-	@media (min-width: 720px) {
-		.choice {
-			flex-direction: row;
-			height: min(calc(100dvh - 136px - env(safe-area-inset-top)), 760px);
-			min-height: 520px;
+	@keyframes up {
+		from {
+			transform: translateY(108%);
+		}
+	}
+	@keyframes show {
+		from {
+			opacity: 0;
+			transform: translateY(8px);
+		}
+	}
+	@keyframes settle {
+		from {
+			transform: scale(1.07);
+		}
+	}
+	@media (min-width: 900px) {
+		.hero {
+			height: 100dvh;
+		}
+		.hero img {
+			object-position: 50% 62%;
 		}
 		.scrim {
-			padding: 140px 32px 32px;
+			background:
+				linear-gradient(to bottom, rgba(5, 5, 5, 0.75) 0%, rgba(5, 5, 5, 0) 22%),
+				linear-gradient(to top, var(--bg) 0%, rgba(5, 5, 5, 0.9) 24%, rgba(5, 5, 5, 0.25) 56%, rgba(5, 5, 5, 0) 75%);
 		}
-		.scrim strong {
-			font-size: 42px;
+		.content {
+			width: 100%;
+			max-width: 1200px;
+			margin-left: auto;
+			margin-right: auto;
+			padding: 0 48px 16px;
 		}
-		.index {
-			top: 26px;
-			left: 32px;
+		.headline {
+			font-size: clamp(56px, 6vw, 84px);
+			max-width: 11em;
 		}
 		.lede {
 			font-size: 15px;
 		}
-		.tradelink {
-			max-width: 560px;
-			margin: 0 auto;
+		.choices {
+			display: grid;
+			grid-template-columns: 1fr 1fr;
+			column-gap: 48px;
+			margin-top: 56px;
 		}
-	}
-	@media (prefers-reduced-motion: reduce) {
-		.panel img {
-			opacity: 1;
+		.choice,
+		.choice:last-child {
+			border-bottom: 1px solid var(--hair-strong);
+			padding: 24px 0;
+		}
+		.choice .t {
+			font-size: 24px;
+		}
+		.choice .s {
+			font-size: 13px;
+		}
+		.fine {
+			padding-top: 28px;
 		}
 	}
 </style>

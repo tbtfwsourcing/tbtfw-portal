@@ -1,21 +1,20 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { portal, go, back, railFor, photoCount } from '#lib/portal/state.svelte.js';
+	import { portal, go, back, photoCount, sellStep } from '#lib/portal/state.svelte.js';
 	import { busy, setBusy } from '#lib/busy.svelte.js';
 	import { createLead, completeLead, putUpload } from '#lib/api/intake.js';
 	import { mountWidget, getToken } from '#lib/portal/turnstile.js';
 	import { vinValid } from '#lib/vin.js';
-	import { digits, groupDigits, formatPhone, EMAIL_RE } from '#lib/format.js';
+	import { digits, formatPhone, EMAIL_RE } from '#lib/format.js';
 	import { SITE, MIN_PHOTOS } from '#lib/config.js';
-	import Rail from '#lib/components/Rail.svelte';
 	import FloatField from '#lib/components/FloatField.svelte';
 	import Toggle from '#lib/components/Toggle.svelte';
-	import VinField from './VinField.svelte';
-	import PhotoSlots from './PhotoSlots.svelte';
+	import Step from './Step.svelte';
+	import Dock from './Dock.svelte';
 	import Submit from './Submit.svelte';
 
 	const f = portal.sellForm;
-	const rail = $derived(railFor('sell1'));
+	const trade = $derived(portal.mode === 'trade');
 
 	let error = $state('');
 	// Per-field messages. A failed submit focuses the field, which on a phone
@@ -23,8 +22,6 @@
 	let fe = $state<Record<string, string>>({});
 	let website = $state('');
 	let tsEl = $state<HTMLDivElement | null>(null);
-	let mileageRef = $state<HTMLInputElement | HTMLTextAreaElement | null>(null);
-	let askRef = $state<HTMLInputElement | HTMLTextAreaElement | null>(null);
 	let nameRef = $state<HTMLInputElement | HTMLTextAreaElement | null>(null);
 	let phoneRef = $state<HTMLInputElement | HTMLTextAreaElement | null>(null);
 	let emailRef = $state<HTMLInputElement | HTMLTextAreaElement | null>(null);
@@ -33,7 +30,6 @@
 		if (tsEl) mountWidget('sell', tsEl);
 	});
 
-	// Inline checks on blur. Submit re-validates everything regardless.
 	function checkPhone() {
 		fe.phone = f.phone && digits(f.phone).length < 10 ? 'Enter a phone number with area code.' : '';
 	}
@@ -55,21 +51,14 @@
 		const vin = f.vin.toUpperCase();
 		// Already created on a previous pass through this screen: just move on.
 		if (portal.sell?.id && portal.sell.vin === vin) {
-			go('sell2');
+			go('sell-more');
 			return;
 		}
-		if (!vinValid(vin)) {
-			error = 'Enter the full 17 character VIN. It must pass the check.';
-			document.getElementById('vin')?.focus();
-			return;
-		}
+		// The earlier steps check these before letting the customer through; this is the backstop.
 		const mi = digits(f.mileage);
-		if (!mi) return fail('mileage', 'Enter the mileage.', mileageRef);
 		const ask = digits(f.asking_price);
-		if (!ask) return fail('asking', 'Enter what you are looking to get.', askRef);
-		if (photoCount() < MIN_PHOTOS) {
-			error = 'Add at least three photos.';
-			document.getElementById('photos-h')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+		if (!vinValid(vin) || !mi || !ask || photoCount() < MIN_PHOTOS) {
+			error = 'Something earlier in the form is missing. Go back a step and check the VIN, the numbers and the photos.';
 			return;
 		}
 		if (!f.full_name.trim()) return fail('name', 'Enter your name.', nameRef);
@@ -136,12 +125,12 @@
 			const c = await completeLead(portal.sell.id, dims);
 			if (c?.ok) portal.sell.photoCount = c.photo_count;
 			setBusy(false);
-			go('sell2');
+			go('sell-more');
 		} catch (err) {
 			setBusy(false);
 			// The lead exists even if an upload failed; the details step still applies.
 			if (created) {
-				go('sell2');
+				go('sell-more');
 				return;
 			}
 			error =
@@ -152,46 +141,19 @@
 	}
 </script>
 
-<Rail label={rail.label} step={rail.step} onback={() => back('sell1')} />
-<form onsubmit={submit} novalidate>
+<Step
+	eyebrow={trade ? 'Your trade-in' : 'Last step'}
+	title={trade ? 'Confirm your details.' : 'Where can we reach you?'}
+	lede={trade ? 'We have these from your inquiry.' : 'A specialist replies within the hour.'}
+	step={sellStep('sell-you')}
+	onback={() => back('sell-you')}
+	onsubmit={submit}
+	{error}
+>
 	<div class="hp" aria-hidden="true">
 		<label for="sell-website">Leave this empty</label>
 		<input type="text" id="sell-website" bind:value={website} tabindex="-1" autocomplete="off" />
 	</div>
-
-	<h1 class="disp mt-3 mb-7 text-[32px] md:text-[42px]">Your car</h1>
-	<VinField />
-	<FloatField
-		id="mileage"
-		label="Mileage"
-		type="text"
-		inputmode="numeric"
-		required
-		bind:value={f.mileage}
-		bind:ref={mileageRef}
-		error={fe.mileage}
-		oninput={() => (fe.mileage = '')}
-		onblur={() => (f.mileage = groupDigits(f.mileage))}
-	/>
-	<FloatField
-		money
-		id="asking_price"
-		label="What are you looking to get?"
-		type="text"
-		inputmode="numeric"
-		required
-		bind:value={f.asking_price}
-		bind:ref={askRef}
-		error={fe.asking}
-		oninput={() => (fe.asking = '')}
-		onblur={() => (f.asking_price = groupDigits(f.asking_price))}
-	/>
-
-	<h2 id="photos-h" class="section-head mb-1.5 scroll-mt-4">Photos</h2>
-	<p class="mb-4 text-[14px] text-mute">Three or more. Camera or library, your choice.</p>
-	<PhotoSlots />
-
-	<h2 class="section-head mb-5">Your details</h2>
 	<FloatField
 		id="sell-full_name"
 		label="Name"
@@ -228,6 +190,7 @@
 		autocapitalize="none"
 		autocorrect="off"
 		inputmode="email"
+		enterkeyhint="done"
 		required
 		bind:value={f.email}
 		bind:ref={emailRef}
@@ -235,18 +198,20 @@
 		oninput={() => (fe.email = '')}
 		onblur={checkEmail}
 	/>
-
 	<Toggle id="sell-consent" consent required bind:checked={f.consent}>
 		I agree to be contacted by {SITE.name} by call, text and email about this inquiry. Message and data rates may apply. Reply STOP to opt out.
 	</Toggle>
-	<p class="-mt-1 mb-6 pl-[34px] text-xs text-mute">
+	<p class="-mt-1 mb-2 pl-[34px] text-xs text-mute">
 		We use your details only to reply to this inquiry.
 		<a href={SITE.privacy} target="_blank" rel="noopener" class="text-mute underline underline-offset-2 hover:text-bone">Privacy</a>
 	</p>
 	<div bind:this={tsEl}></div>
-	{#if error}<p class="mb-4 border-l border-bone pl-3 text-[13px] leading-relaxed text-foreground" role="alert">{error}</p>{/if}
-	<Submit disabled={busy.on}>Send my car</Submit>
-</form>
+	{#snippet dock()}
+		<Dock>
+			<Submit disabled={busy.on}>Send my car</Submit>
+		</Dock>
+	{/snippet}
+</Step>
 
 <style>
 	.hp {

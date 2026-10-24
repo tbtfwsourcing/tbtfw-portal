@@ -22,7 +22,8 @@ Every page is static HTML that talks to the Edge Functions from the browser. The
       app.css                     design tokens (warm black / ivory / hairline / bone) mapped onto shadcn's variables
       app.html                    document shell
       routes/
-        +page.svelte              the portal: choice → buy | sell (2 steps) → sent
+        +page.svelte              the portal: home → find any car (+ showroom car view, side menu, ask sheet)
+                                  | sell (4 one-question steps) → sent
         leads/+page.svelte        the CRM: Queue / Leads / Voice — built to leads.html
         +error.svelte             branded 404 (adapter-static writes 404.html for Pages)
       lib/
@@ -30,12 +31,16 @@ Every page is static HTML that talks to the Edge Functions from the browser. The
         format.ts  vin.ts  images.ts
         api/intake.ts             lead-intake client (inventory, create lead, uploads, details)
         api/crm.ts                lead-crm client (queue, voice, send / mark / skip, stage, notes, owner)
-        portal/state.svelte.ts    the intake session: mode, forms, photos, results; shallow-routed screens
+        portal/state.svelte.ts    the intake session: mode, forms, photos, results; shallow-routed screens and sheets
+        portal/photos.svelte.ts   which inventory photos are real (the CDN's "Coming soon" card is never shown)
         portal/turnstile.ts       invisible Turnstile
         crm/state.svelte.ts       the CRM session: key, queue data, tab, filters
         components/
-          FloatField  ChipGroup  Toggle  Rail  Wordmark  Footer  ProgressLine
-          portal/                 ChoiceScreen, InventoryPicker, VinField, PhotoSlots, Buy/Sell/Details/Done screens
+          FloatField  ChipGroup  Toggle  Wordmark  Footer  ProgressLine
+          portal/                 ChoiceScreen (home), BuyScreen (find any car), ShowroomScreen (car view),
+                                  SideMenu (the slide-out showroom), AskSheet,
+                                  SellCar / SellNumbers / SellPhotos / SellYou, Details and Done screens,
+                                  and their parts: TopBar, Step, Dock, BottomSheet, VinField, PhotoSlots
           crm/                    DraftCard, LeadRow, Thread, LeadChips, Chip, Confirm, the three tabs
           ui/                     shadcn-svelte components (generated; edit freely, they are yours)
     static/                       favicon, apple-touch-icon, og.png (share image), manifest, robots, .nojekyll

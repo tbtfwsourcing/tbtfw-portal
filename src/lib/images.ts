@@ -3,6 +3,16 @@ export function sized(url: string | null | undefined, w: number): string {
 	return url ? String(url).replace(/_1920\.jpg$/i, '_' + w + '.jpg') : '';
 }
 
+// The dealer's image CDN serves a "Coming soon" card (a draped car on black) for
+// cars that have not been photographed yet. Every real photo is 3:2 and the card
+// is not (800×517 against 800×533), so the aspect ratio tells them apart without
+// reading pixels across origins.
+export function isPlaceholder(img: HTMLImageElement): boolean {
+	const w = img.naturalWidth;
+	const h = img.naturalHeight;
+	return w > 0 && h > 0 && Math.abs(w / h - 1.5) > 0.02;
+}
+
 export interface Compressed {
 	blob: Blob;
 	type: string;

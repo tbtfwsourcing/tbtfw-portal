@@ -1,16 +1,26 @@
 <script lang="ts">
 	import { portal, photoCount } from '#lib/portal/state.svelte.js';
 	import { compress } from '#lib/images.js';
-	import { SLOT_ORDER, SLOT_NAMES, MAX_PHOTOS, MIN_PHOTOS, MAX_EXTRA_SLOTS } from '#lib/config.js';
+	import { SLOT_ORDER, SLOT_NAMES, MAX_PHOTOS, MAX_EXTRA_SLOTS, type NamedSlot } from '#lib/config.js';
 	import PlusIcon from '@lucide/svelte/icons/plus';
 	import CheckIcon from '@lucide/svelte/icons/check';
 
-	const count = $derived(photoCount());
-	const countLabel = $derived(
-		count < MIN_PHOTOS
-			? count + ' of ' + MIN_PHOTOS + ' required'
-			: count + (count === 1 ? ' photo' : ' photos') + (count >= MAX_PHOTOS ? ', maximum' : '')
-	);
+	interface Props {
+		// The slot the guide points at next; the step's button opens this one.
+		next: NamedSlot | null;
+	}
+	let { next }: Props = $props();
+
+	// Short labels for the tiles; the full names stay on the inputs for screen readers.
+	const SHORT: Record<NamedSlot, string> = {
+		front34: 'Front ¾',
+		rear34: 'Rear ¾',
+		interior: 'Interior',
+		odometer: 'Odometer',
+		vin_plate: 'VIN plate',
+		sticker: 'Build sheet'
+	};
+
 	const extras = $derived(
 		Object.keys(portal.photos)
 			.filter((k) => k.startsWith('extra_'))
@@ -33,9 +43,10 @@
 	function onSlot(slot: string, e: Event) {
 		const inp = e.currentTarget as HTMLInputElement;
 		if (inp.files?.[0]) placeFile(slot, inp.files[0]);
+		inp.value = '';
 	}
 
-	// "Add photos" fills the named slots in order first, then the extras.
+	// "Choose several" fills the named slots in order first, then the extras.
 	async function onMany(e: Event) {
 		const inp = e.currentTarget as HTMLInputElement;
 		const files = Array.from(inp.files ?? []);
@@ -52,88 +63,75 @@
 <div class="slots">
 	{#each SLOT_ORDER as slot (slot)}
 		{@const p = portal.photos[slot]}
-		<label class="slot" class:filled={!!p} for="ph-{slot}">
-			<input type="file" id="ph-{slot}" accept="image/*" onchange={(e) => onSlot(slot, e)} />
+		<label class="slot" class:filled={!!p} class:next={slot === next} for="ph-{slot}">
+			<input type="file" id="ph-{slot}" accept="image/*" aria-label={SLOT_NAMES[slot]} onchange={(e) => onSlot(slot, e)} />
 			{#if p}
-				<img src={p.url} alt="" class="ready" />
-				<span class="tick" aria-hidden="true"><CheckIcon class="size-3" /></span>
+				<img src={p.url} alt="" />
 			{:else}
-				<span class="plus" aria-hidden="true"><PlusIcon class="size-4" /></span>
+				<span class="plus" aria-hidden="true"><PlusIcon class="size-5" /></span>
 			{/if}
-			<span class="n">{SLOT_NAMES[slot]}</span>
+			<span class="n" aria-hidden="true">
+				{SHORT[slot]}
+				{#if p}<CheckIcon class="size-3 text-bone" />{/if}
+			</span>
 		</label>
 	{/each}
 </div>
 {#if extras.length}
-	<div class="mb-2 flex flex-wrap gap-1.5">
+	<div class="mt-2 flex flex-wrap gap-1.5">
 		{#each extras as k (k)}
 			<img src={portal.photos[k].url} alt="" class="size-[52px] border border-hair object-cover" />
 		{/each}
 	</div>
 {/if}
-<div class="addrow">
-	<label for="photos">Add photos</label>
-	<input type="file" id="photos" multiple accept="image/*" onchange={onMany} />
-	<span class="num text-[12.5px] tracking-[.02em] text-mute">{countLabel}</span>
-</div>
+<input type="file" id="photos" class="many" multiple accept="image/*" aria-label="Choose several photos" onchange={onMany} />
 
 <style>
 	.slots {
 		display: grid;
-		grid-template-columns: repeat(3, 1fr);
+		grid-template-columns: repeat(2, 1fr);
 		gap: 8px;
-		margin: 8px 0 6px;
 	}
 	.slot {
 		position: relative;
 		display: block;
-		aspect-ratio: 1 / 1;
-		border: 1px solid var(--hair);
+		aspect-ratio: 4 / 3;
+		border: 1px solid var(--hair-strong);
 		background: var(--surface);
 		cursor: pointer;
 		overflow: hidden;
 		-webkit-user-select: none;
 		user-select: none;
 		-webkit-touch-callout: none;
-		transition: border-color 0.2s;
+		transition: border-color 0.3s;
 	}
-	.slot .plus {
+	/* The guide: the angle to shoot next wears the bone accent. */
+	.slot.next {
+		border-color: var(--bone);
+	}
+	.slot.next .plus {
+		color: var(--bone);
+	}
+	.slot.filled {
+		border-color: transparent;
+	}
+	.plus {
 		position: absolute;
-		inset: 0;
+		inset: 0 0 18px;
 		display: grid;
 		place-items: center;
 		color: var(--mute);
 		transition: color 0.2s;
 	}
-	.slot .tick {
-		position: absolute;
-		top: 8px;
-		right: 8px;
-		z-index: 2;
-		display: grid;
-		place-items: center;
-		width: 20px;
-		height: 20px;
-		border-radius: 999px;
-		background: var(--bone);
-		color: var(--bg);
-	}
-	@media (hover: hover) {
-		.slot:hover {
-			border-color: var(--hair-strong);
-		}
-		.slot:hover .plus {
-			color: var(--fg);
-		}
-	}
 	.slot input,
-	.addrow input {
+	.many {
 		position: absolute;
 		opacity: 0;
 		width: 1px;
 		height: 1px;
 		left: 0;
 		top: 0;
+		pointer-events: none;
 	}
 	.slot img {
 		position: absolute;
@@ -141,25 +139,40 @@
 		width: 100%;
 		height: 100%;
 		object-fit: cover;
-		animation: fade 350ms ease-out;
+		animation: fade 400ms ease-out;
 	}
-	.slot .n {
+	.n {
 		position: absolute;
 		left: 10px;
 		bottom: 9px;
-		right: 8px;
-		font-size: 11px;
-		line-height: 1.3;
-		letter-spacing: 0.02em;
+		right: 10px;
+		display: flex;
+		align-items: center;
+		gap: 6px;
+		font-size: 10px;
+		font-weight: 500;
+		letter-spacing: 0.16em;
+		text-transform: uppercase;
 		color: var(--mute);
+	}
+	.slot.next .n {
+		color: var(--fg);
 	}
 	.slot.filled .n {
 		left: 0;
 		right: 0;
 		bottom: 0;
-		padding: 18px 10px 8px;
+		padding: 22px 10px 9px;
 		color: var(--fg);
 		background: linear-gradient(to top, rgba(0, 0, 0, 0.85), rgba(0, 0, 0, 0));
+	}
+	@media (hover: hover) {
+		.slot:hover {
+			border-color: var(--fg);
+		}
+		.slot:hover .plus {
+			color: var(--fg);
+		}
 	}
 	.slot:has(input:focus-visible) {
 		outline: 1px solid var(--bone);
@@ -168,40 +181,14 @@
 	.slot:active {
 		border-color: var(--bone);
 	}
-	.addrow {
-		position: relative;
-		display: flex;
-		align-items: center;
-		justify-content: space-between;
-		min-height: 44px;
-		margin-bottom: 6px;
-	}
-	.addrow label {
-		font-size: 13px;
-		letter-spacing: 0.04em;
-		text-decoration: underline;
-		text-underline-offset: 5px;
-		text-decoration-color: var(--hair-strong);
-		cursor: pointer;
-		padding: 10px 0;
-		min-height: 44px;
-		display: inline-flex;
-		align-items: center;
-		transition: text-decoration-color 0.2s;
-	}
-	.addrow label:hover {
-		text-decoration-color: var(--bone);
-	}
-	.addrow label:active {
-		color: var(--bone);
-	}
-	.addrow:has(input:focus-visible) label {
-		outline: 1px solid var(--bone);
-		outline-offset: 4px;
-	}
 	@keyframes fade {
 		from {
 			opacity: 0;
+		}
+	}
+	@media (min-width: 900px) {
+		.slots {
+			grid-template-columns: repeat(3, 1fr);
 		}
 	}
 </style>

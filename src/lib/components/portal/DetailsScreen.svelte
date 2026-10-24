@@ -1,17 +1,17 @@
 <script lang="ts">
-	import { portal, back, finish, railFor } from '#lib/portal/state.svelte.js';
+	import { portal, back, finish } from '#lib/portal/state.svelte.js';
 	import { busy, setBusy } from '#lib/busy.svelte.js';
 	import { saveDetails, completeLead, putUpload } from '#lib/api/intake.js';
 	import { digits, groupDigits, identityLine, miles } from '#lib/format.js';
 	import { MAX_RECORDS } from '#lib/config.js';
-	import Rail from '#lib/components/Rail.svelte';
 	import FloatField from '#lib/components/FloatField.svelte';
 	import ChipGroup from '#lib/components/ChipGroup.svelte';
 	import Toggle from '#lib/components/Toggle.svelte';
+	import Step from './Step.svelte';
+	import Dock from './Dock.svelte';
 	import Submit from './Submit.svelte';
 
 	const f = portal.detailsForm;
-	const rail = $derived(railFor('sell2'));
 	const spec = $derived(
 		portal.sell ? identityLine(portal.sell.identity) + ' // ' + miles(portal.sell.mileage) : ''
 	);
@@ -75,12 +75,14 @@
 	}
 </script>
 
-<Rail label={rail.label} step={rail.step} onback={() => back('sell2')} />
-<form onsubmit={submit} novalidate>
-	<h1 class="disp mt-3 mb-3 text-[32px] md:text-[42px]">Tell us more</h1>
-	<p class="mb-1 text-[14px] text-mute">Optional. Saves a phone call.</p>
-	{#if spec}<p class="eyebrow mb-8 text-bone">{spec}</p>{:else}<div class="mb-8"></div>{/if}
-
+<Step
+	eyebrow="Sent"
+	title="Anything else we should know?"
+	lede="Optional. Every answer here saves a phone call."
+	aside="Optional"
+	onback={() => back('sell-more')}
+	onsubmit={submit}
+>
 	<ChipGroup name="intent" label="Intent" options={['Sell outright', 'Consign', 'Trade']} bind:value={f.intent} />
 	<ChipGroup name="title_status" label="Title" options={['Clean', 'Lien', 'Salvage or rebuilt']} bind:value={f.title_status} />
 	{#if f.title_status === 'Lien'}
@@ -104,9 +106,15 @@
 	<ChipGroup name="sell-contact_pref" label="Reach me by" options={['Text', 'Call', 'Email']} bind:value={f.contact_pref} />
 	<FloatField id="sell-best_time" label="Best time" type="text" bind:value={f.best_time} />
 
-	<Submit disabled={busy.on}>Save details</Submit>
-	<Submit secondary type="button" disabled={busy.on} onclick={sellDone}>Skip</Submit>
-</form>
+	{#snippet dock()}
+		<Dock>
+			<Submit disabled={busy.on}>Save details</Submit>
+			{#snippet below()}
+				<button type="button" disabled={busy.on} onclick={sellDone}>Skip, I'm done</button>
+			{/snippet}
+		</Dock>
+	{/snippet}
+</Step>
 
 <style>
 	.addrow {
