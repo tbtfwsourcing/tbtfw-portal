@@ -37,9 +37,9 @@ html, body { width: 1200px; height: 630px; background: #050505; overflow: hidden
 	</div>
 </div>
 <script>
-	// The link preview at any moment t of its six seconds, so render.mjs can capture it frame
-	// by frame at an exact rate. The last frame is the still (og.jpg), so a preview that plays
-	// once ends on its cover. ?a= is the lead car's photo, ?b= the car it crossfades to.
+	// The link preview at any moment t of a six-second animation; render.mjs captures the final,
+	// settled frame as og.jpg. (The motion was for a video preview, dropped because iMessage opens
+	// video full screen on tap.) ?a= is the car's photo; ?b= is a second car the animation passes through.
 	const q = new URLSearchParams(location.search);
 	const photos = [q.get('a'), q.get('b')];
 	const words = 'The extraordinary, bought and sold.'.split(' ');

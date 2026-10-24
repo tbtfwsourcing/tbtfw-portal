@@ -97,22 +97,17 @@ One-time repo setting: **Settings → Pages → Build and deployment → Source:
 
 - `SITE.phone`, `SITE.address`, `SITE.hours` in `lib/config.ts` are empty; fill them to show them in the footer.
 - The link preview is a still, `static/og.jpg` (`og:image`, 1200×630): the Chiron, the headline and the wordmark.
-  A tap on it opens the portal. An `og:video` clip played in iMessage, but a tap then opened the clip instead of
-  the site, so it was dropped. The still is the last frame of `scripts/og-preview/anim.html`.
-- To swap the car, for example when it sells (needs Google Chrome, plus `brew install ffmpeg` once):
+  Keep it a still. In iMessage a video (`og:video`) or an animated image opens full screen when tapped, and only
+  the thin strip under it opens the site; both were tried and dropped. A still opens the site on any tap.
+- To change the car, for example when it sells (needs Google Chrome):
 
-      npm run og:preview -- --a 795008 --b 795037-BUG
+      npm run og:preview -- --car 795008
 
-  `--a` is the car in the still; `--b` is the car the animation crossfades to (it only shows in `--video` and
-  `--animated` output). Each takes a stock id from the inventory feed or an inventory photo URL. It refuses a
-  "Coming soon" card and rewrites `static/og.jpg` in about 40 seconds. Run it with no arguments to rebuild the
-  current one. `--video` also writes the six-second `og.mp4`; `--animated` writes looping `og.gif` and `og.webp`
-  (needs `brew install webp`).
+  `--car` takes a stock id from the inventory feed or an inventory photo URL; with no argument it rebuilds the
+  current one. It refuses a "Coming soon" card and rewrites `static/og.jpg` in a few seconds, drawn by
+  `scripts/og-preview/anim.html` at its final frame.
 - Then update `og:image:alt` in `routes/+page.svelte` to describe the new car (the script prints its name),
-  and ship. iMessage caches previews by URL, so check with a fresh link, such as `?v=3` on the end.
-- `static/preview-test/` is a temporary test of animated previews: `/preview-test/gif/` and `/preview-test/webp/`
-  carry the same card with an animated `og:image`. Text them to an iPhone to see whether Messages animates them
-  and still opens the page on tap. Delete the folder once that is decided.
+  and ship. iMessage caches previews by URL, so check with a fresh link, such as `?v=5` on the end.
 
 ## Edge Functions
 
