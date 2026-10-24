@@ -3,7 +3,7 @@
 The customer intake portal (Buy / Sell / Trade) and the CRM behind it, for TBTFW in Beverly Hills.
 
 - **Live:** https://tbtfwsourcing.github.io/tbtfw-portal/ (GitHub Pages, deployed from `main` by Actions)
-- **CRM:** `leads.html` on the same host. Sign in with your @tbtfw.com email: a six-digit code arrives by email
+- **CRM:** `leads.html` on the same host. Sign in with your @tbtfw.com email: a one-time code arrives by email
   (Supabase Auth, no password). `lead-crm` only admits sessions on that domain (`CRM_ALLOWED_DOMAIN`, or an
   explicit `CRM_ALLOWED_EMAILS` list) and records the signed-in email on every lead event. The old
   `?k=PORTAL_KEY` bookmark still works until `CRM_LEGACY_KEY=off` is set on the function.

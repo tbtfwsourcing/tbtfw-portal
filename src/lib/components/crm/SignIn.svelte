@@ -11,6 +11,8 @@
 	let step = $state<'email' | 'code'>('email');
 	let busy = $state(false);
 	let error = $state('');
+	// Set when Supabase refuses to send another email: the last code still works.
+	let limited = $state(false);
 	let codeRef = $state<HTMLInputElement | HTMLTextAreaElement | null>(null);
 
 	async function send(e: SubmitEvent) {
@@ -23,7 +25,10 @@
 		busy = true;
 		const err = await sendCode(email);
 		busy = false;
-		if (err) {
+		// The built-in mailer allows only a few emails an hour. Hitting that limit means a
+		// code went out recently, so go on to the code step rather than stalling here.
+		limited = !!err && /rate limit/i.test(err);
+		if (err && !limited) {
 			error = err;
 			return;
 		}
@@ -34,8 +39,9 @@
 	async function verify(e: SubmitEvent) {
 		e.preventDefault();
 		error = '';
+		// Supabase codes are 6 to 10 digits, depending on the project's Email OTP Length.
 		if (code.replace(/\D/g, '').length < 6) {
-			error = 'Enter the six-digit code from the email.';
+			error = 'Enter the code from the email.';
 			return;
 		}
 		busy = true;
@@ -59,7 +65,7 @@
 	<p class="section-head mt-0 mb-5">Sign in</p>
 	{#if step === 'email'}
 		<h1 class="disp mb-3 text-[32px]">Your TBTFW email</h1>
-		<p class="mb-8 text-[14px] leading-relaxed text-mute">We will send a six-digit code. No password.</p>
+		<p class="mb-8 text-[14px] leading-relaxed text-mute">We will email you a sign-in code. No password.</p>
 		<form onsubmit={send} novalidate>
 			<FloatField
 				id="si-email"
@@ -77,16 +83,21 @@
 	{:else}
 		<h1 class="disp mb-3 text-[32px]">Check your email</h1>
 		<p class="mb-8 text-[14px] leading-relaxed text-mute">
-			A code is on its way to <span class="text-foreground">{email.trim()}</span>. Enter it here, or tap the link in the email.
+			{#if limited}
+				A code was sent to <span class="text-foreground">{email.trim()}</span> recently. Enter the newest one here; a new
+				email can be sent again in a few minutes.
+			{:else}
+				A code is on its way to <span class="text-foreground">{email.trim()}</span>. Enter it here, or tap the link in the email.
+			{/if}
 		</p>
 		<form onsubmit={verify} novalidate>
 			<FloatField
 				id="si-code"
-				label="Six-digit code"
+				label="Code from the email"
 				type="text"
 				inputmode="numeric"
 				autocomplete="one-time-code"
-				maxlength={6}
+				maxlength={10}
 				required
 				class="num"
 				bind:value={code}

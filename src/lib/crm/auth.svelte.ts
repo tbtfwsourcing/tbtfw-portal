@@ -42,8 +42,9 @@ export function allowedEmail(email: string): boolean {
 	return email.trim().toLowerCase().endsWith('@' + CRM_EMAIL_DOMAIN);
 }
 
-// Sends a six-digit code (and a magic link) to the address. The redirect lands
-// back on this page, so tapping the link in the email also signs in.
+// Sends a one-time code (6 to 10 digits, per the project's Email OTP Length) and a
+// magic link to the address. The redirect lands back on this page, so tapping the
+// link in the email also signs in.
 export async function sendCode(email: string): Promise<string> {
 	const { error } = await supabase().auth.signInWithOtp({
 		email: email.trim().toLowerCase(),
