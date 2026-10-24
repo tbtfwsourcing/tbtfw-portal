@@ -21,11 +21,9 @@
 
 	const TITLE = SITE.name + ' // Buy, sell or trade';
 	const DESC = 'Sell your car to TBTFW, or tell us your next one and we will find it. Beverly Hills.';
-	// The share card. iMessage plays the MP4 in the bubble (muted, six seconds, ending on
-	// the still); every other app shows the still, which is also the video's cover.
-	// Both come from the same animation, so the last frame and the still match.
+	// The share card: a still, so a tap on the preview opens the portal. (An og:video made
+	// iMessage open the clip on tap instead of the site.) Rendered by npm run og:preview.
 	const OG_IMAGE = SITE.portal + 'og.jpg';
-	const OG_VIDEO = SITE.portal + 'og.mp4';
 
 	const ld = JSON.stringify({
 		'@context': 'https://schema.org',
@@ -115,11 +113,6 @@
 	<meta property="og:image:width" content="1200" />
 	<meta property="og:image:height" content="630" />
 	<meta property="og:image:alt" content="A black and orange Bugatti Chiron Super Sport 300+ in the TBTFW showroom. The extraordinary, bought and sold." />
-	<meta property="og:video" content={OG_VIDEO} />
-	<meta property="og:video:secure_url" content={OG_VIDEO} />
-	<meta property="og:video:type" content="video/mp4" />
-	<meta property="og:video:width" content="1200" />
-	<meta property="og:video:height" content="630" />
 	<meta name="twitter:card" content="summary_large_image" />
 	<meta name="twitter:title" content={TITLE} />
 	<meta name="twitter:description" content={DESC} />
