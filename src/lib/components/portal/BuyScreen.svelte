@@ -271,6 +271,22 @@
 			opacity: 0;
 		}
 	}
+	@media (min-width: 600px) and (max-width: 899px) {
+		.body {
+			padding: 56px 40px 8px;
+		}
+		.q {
+			font-size: 46px;
+		}
+		.cards {
+			margin: 12px -40px 0;
+			padding: 0 40px 4px;
+			scroll-padding-inline: 40px;
+		}
+		.card {
+			flex-basis: 40%;
+		}
+	}
 	@media (min-width: 900px) {
 		.body {
 			padding-top: 9vh;
@@ -289,6 +305,18 @@
 		}
 		.card {
 			flex-basis: 30%;
+		}
+	}
+	/* Wide but short (a foldable or tablet in landscape): tighter, so the fields clear the pinned button. */
+	@media (min-width: 900px) and (max-height: 760px) {
+		.body {
+			padding-top: 28px;
+		}
+		.q {
+			font-size: 40px;
+		}
+		.field-wrap {
+			margin-top: 28px;
 		}
 	}
 </style>

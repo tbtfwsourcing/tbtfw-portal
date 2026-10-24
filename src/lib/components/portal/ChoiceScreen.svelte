@@ -284,6 +284,20 @@
 			transform: scale(1.07);
 		}
 	}
+	@media (min-width: 600px) and (max-width: 899px) {
+		.content {
+			padding: 0 40px calc(12px + env(safe-area-inset-bottom));
+		}
+		.headline {
+			font-size: 52px;
+		}
+		.lede {
+			font-size: 15px;
+		}
+		.choice .t {
+			font-size: 24px;
+		}
+	}
 	@media (min-width: 900px) {
 		.hero {
 			height: 100dvh;
@@ -329,6 +343,16 @@
 		}
 		.fine {
 			padding-top: 28px;
+		}
+	}
+	@media (min-width: 900px) and (max-height: 760px) {
+		.scrim {
+			background:
+				linear-gradient(to bottom, rgba(5, 5, 5, 0.75) 0%, rgba(5, 5, 5, 0) 22%),
+				linear-gradient(to top, var(--bg) 0%, rgba(5, 5, 5, 0.94) 38%, rgba(5, 5, 5, 0.55) 62%, rgba(5, 5, 5, 0) 85%);
+		}
+		.choices {
+			margin-top: 36px;
 		}
 	}
 </style>

@@ -70,6 +70,14 @@
 		font-size: 13px;
 		line-height: 1.6;
 	}
+	@media (min-width: 600px) and (max-width: 899px) {
+		.body {
+			padding: 56px 40px 8px;
+		}
+		.q {
+			font-size: 46px;
+		}
+	}
 	@media (min-width: 900px) {
 		.body {
 			padding-top: 9vh;
@@ -82,6 +90,18 @@
 		}
 		.fields {
 			margin-top: 48px;
+		}
+	}
+	/* Wide but short (a foldable or tablet in landscape): tighter, so the fields clear the pinned button. */
+	@media (min-width: 900px) and (max-height: 760px) {
+		.body {
+			padding-top: 28px;
+		}
+		.q {
+			font-size: 40px;
+		}
+		.fields {
+			margin-top: 28px;
 		}
 	}
 </style>

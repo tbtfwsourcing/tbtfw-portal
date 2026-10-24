@@ -68,8 +68,10 @@
 	.below :global(label:hover) {
 		text-decoration-color: var(--bone);
 	}
-	/* Desktop has no thumb to stay under: the button follows the fields, in their column. */
-	@media (min-width: 900px) {
+	/* A desktop has no thumb to stay under: the button follows the fields, in their column.
+	   Wide but short screens (a foldable or tablet in landscape) keep it pinned, so it never
+	   drops below the fold. */
+	@media (min-width: 900px) and (min-height: 760px) {
 		.dock:not(.pinned) {
 			position: static;
 			margin-top: 0;

@@ -333,6 +333,20 @@
 		opacity: 0.3;
 		cursor: default;
 	}
+	@media (min-width: 600px) and (max-width: 899px) {
+		.info {
+			padding: 0 40px;
+		}
+		.name {
+			font-size: 48px;
+		}
+		.trim {
+			font-size: 18px;
+		}
+		.plate-name {
+			font-size: 104px;
+		}
+	}
 	@media (min-width: 900px) {
 		.photo {
 			height: calc(100dvh - 250px);

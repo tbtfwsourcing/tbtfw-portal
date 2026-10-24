@@ -135,6 +135,15 @@
 			transform: scale(1.06);
 		}
 	}
+	@media (min-width: 600px) and (max-width: 899px) {
+		.body {
+			padding-left: 40px;
+			padding-right: 40px;
+		}
+		.q {
+			font-size: 46px;
+		}
+	}
 	@media (min-width: 900px) {
 		.photo {
 			height: 60dvh;
