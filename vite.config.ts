@@ -16,6 +16,10 @@ export default defineConfig({
 			},
 			adapter: adapter({ fallback: '404.html' }),
 			paths: { base, relative: false },
+			// Inline the CSS into each page so first paint does not wait on a stylesheet
+			// round trip. GitHub Pages caches assets for only ten minutes, so a separate
+			// file buys almost nothing; ~100 KB raw is ~20 KB gzipped in the HTML.
+			inlineStyleThreshold: 150_000,
 			prerender: { handleHttpError: 'warn' }
 		})
 	]
