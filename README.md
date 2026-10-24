@@ -7,6 +7,9 @@ The customer intake portal (Buy / Sell / Trade) and the CRM behind it, for TBTFW
   (Supabase Auth, no password). `lead-crm` only admits sessions on that domain (`CRM_ALLOWED_DOMAIN`, or an
   explicit `CRM_ALLOWED_EMAILS` list) and records the signed-in email on every lead event. The old
   `?k=PORTAL_KEY` bookmark still works until `CRM_LEGACY_KEY=off` is set on the function.
+  Public sign-ups are off in Supabase, so only existing accounts get a code. To add someone: Supabase →
+  Authentication → Users → Add user → Create new user, with their @tbtfw.com email, "Auto Confirm User"
+  ticked and any long random password (nobody uses it). They then sign in with a code like everyone else.
 - **Backend:** Supabase project `qymkzfhdneukffeilrhx` — Edge Functions, Postgres, pg_cron, Vault, Storage.
 - **Docs:** the "AI Automotive Assistant" Claude project (build handoffs, design contract, ledger).
 
@@ -92,18 +95,20 @@ One-time repo setting: **Settings → Pages → Build and deployment → Source:
 
 ## Edge Functions
 
-    ms-auth/            Microsoft sign-in for garett@tbtfw.com (source included)
-    lead-intake/        intake API, dedupe, Turnstile, photo uploads
-    lead-enrich/        every 2 min: grading, voice drafts, follow-ups, replies
-    lead-crm/           backend for the CRM; Graph email send, Supabase Auth gate (source included, v1.4)
-    lead-inbox/         odd minutes: polls the Outlook inbox for replies
-    inventory-sync/     hourly mirror of tbtfw.com inventory
-    spec-inference/     Haiku grader, shared with the board; lead mode
+    ms-auth/            Microsoft sign-in for garett@tbtfw.com (v6)
+    lead-intake/        intake API, dedupe, Turnstile, photo uploads (v1.4, deployed version 11)
+    lead-enrich/        every 2 min: grading, voice drafts, follow-ups, replies (v1.4)
+    lead-crm/           backend for the CRM; Graph email send, Supabase Auth gate (v1.4, deployed version 12)
+    lead-inbox/         odd minutes: polls the Outlook inbox for replies (v1.0, deployed version 2)
+    inventory-sync/     hourly mirror of tbtfw.com inventory (v1.1, deployed version 8)
+    spec-inference/     Haiku grader, shared with the board; lead mode (v2.7, deployed version 14)
 
-Only `ms-auth` and `lead-crm` are in this repo. Download the others from the Supabase dashboard (Edge Functions → the function
-→ Code → download) into `supabase/functions/<name>/index.ts`. Redeploy from the dashboard or with
+All seven portal functions are in this repo, copied from what was deployed on Oct 24, 2026. The sourcing
+board's functions (board, *-ingest, auto-verdict, pushover-alerts, ilusso-sitemap-join) live only in Supabase.
+Redeploy with the full file (never a stub) from the dashboard, the Supabase MCP, or
 `supabase functions deploy <name> --project-ref qymkzfhdneukffeilrhx`. verify_jwt: `lead-intake`, `lead-crm`,
-`ms-auth` OFF (they gate themselves); the rest ON.
+`ms-auth` OFF (they gate themselves); the rest ON. No secrets live in these files; they read
+`Deno.env` and Vault at runtime.
 
 ## Never commit
 

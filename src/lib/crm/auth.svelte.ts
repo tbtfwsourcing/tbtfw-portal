@@ -44,11 +44,12 @@ export function allowedEmail(email: string): boolean {
 
 // Sends a one-time code (6 to 10 digits, per the project's Email OTP Length) and a
 // magic link to the address. The redirect lands back on this page, so tapping the
-// link in the email also signs in.
+// link in the email also signs in. Accounts are never created here: sign-ups are off
+// in Supabase, and people are added under Authentication → Users → Add user.
 export async function sendCode(email: string): Promise<string> {
 	const { error } = await supabase().auth.signInWithOtp({
 		email: email.trim().toLowerCase(),
-		options: { shouldCreateUser: true, emailRedirectTo: location.origin + location.pathname }
+		options: { shouldCreateUser: false, emailRedirectTo: location.origin + location.pathname }
 	});
 	return error ? error.message : '';
 }

@@ -29,7 +29,8 @@
 		// code went out recently, so go on to the code step rather than stalling here.
 		limited = !!err && /rate limit/i.test(err);
 		if (err && !limited) {
-			error = err;
+			// Sign-ups are off, so an address without an account is refused before any email goes out.
+			error = /signups? not allowed/i.test(err) ? 'This email does not have CRM access yet. Ask Garett to add you.' : err;
 			return;
 		}
 		step = 'code';
