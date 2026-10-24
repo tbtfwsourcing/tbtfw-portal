@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex">
+<meta name="referrer" content="no-referrer">
+<meta name="theme-color" content="#0a0908">
+<title>TBTFW // Text</title>
+<style>
+  :root { color-scheme: dark; }
+  body { margin: 0; min-height: 100dvh; display: grid; place-items: center; background: #0a0908; color: #f4f2ee; font: 16px/1.5 -apple-system, "Helvetica Neue", Helvetica, Arial, sans-serif; }
+  main { width: min(100% - 40px, 440px); padding: 24px 0; }
+  .k { margin: 0 0 10px; font-size: 11px; letter-spacing: .18em; text-transform: uppercase; color: #8a857e; }
+  a { display: block; margin: 18px 0 14px; padding: 16px; background: #f4f2ee; color: #0a0908; text-align: center; text-decoration: none; font-size: 13px; font-weight: 600; letter-spacing: .14em; text-transform: uppercase; }
+  pre { margin: 0; padding-left: 12px; border-left: 2px solid #b9a57e; color: #cfcac3; white-space: pre-wrap; font: inherit; font-size: 15px; }
+</style>
+</head>
+<body>
+<main>
+  <p class="k">TBTFW · Text the customer</p>
+  <a id="go" href="#">Open Messages</a>
+  <pre id="msg"></pre>
+</main>
+<script>
+  // Email apps strip sms: links, so the lead email links here instead, with the number and the
+  // suggested reply in the fragment (browsers never send it to a server), and this page hands
+  // them to Messages. The button is the fallback when the automatic hand-off is blocked.
+  var p = new URLSearchParams(location.hash.slice(1));
+  var to = (p.get('to') || '').replace(/[^\d+]/g, '');
+  var body = p.get('body') || '';
+  var url = 'sms:' + to + (body ? '?&body=' + encodeURIComponent(body) : '');
+  var go = document.getElementById('go');
+  go.href = to ? url : '#';
+  go.textContent = to ? 'Open Messages' : 'No number in this link';
+  document.getElementById('msg').textContent = body;
+  if (to) location.href = url;
+</script>
+</body>
+</html>

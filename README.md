@@ -113,7 +113,7 @@ One-time repo setting: **Settings → Pages → Build and deployment → Source:
 
     ms-auth/            Microsoft sign-in for garett@tbtfw.com (v6)
     lead-intake/        intake API, dedupe, Turnstile, photo uploads (v1.4, deployed version 11)
-    lead-enrich/        every 2 min: grading, voice drafts, follow-ups, replies (v1.4)
+    lead-enrich/        every 2 min: grading, drafts, follow-ups, replies; emails each lead to Garett (v1.7)
     lead-crm/           backend for the CRM; Graph email send, Supabase Auth gate (v1.4, deployed version 12)
     lead-inbox/         odd minutes: polls the Outlook inbox for replies (v1.0, deployed version 2)
     inventory-sync/     hourly mirror of tbtfw.com inventory (v1.1, deployed version 8)
@@ -126,6 +126,17 @@ Redeploy with the full file (never a stub) from the dashboard, the Supabase MCP,
 `supabase functions deploy <name> --project-ref qymkzfhdneukffeilrhx`. verify_jwt: `lead-intake`, `lead-crm`,
 `ms-auth` OFF (they gate themselves); the rest ON. No secrets live in these files; they read
 `Deno.env` and Vault at runtime.
+
+## Lead emails (lead-enrich v1.7)
+
+Nothing is ever sent to a customer on its own: the AI's first reply waits in the queue for a tap (the v1.6
+in-stock auto-email sits behind `AUTO_SEND = false`). Instead every lead is emailed to Garett
+(`LEAD_EMAIL_TO`, default the portal mailbox) through Microsoft Graph right after the AI finishes: a one-line
+summary, **Text / Call / Email / Open in CRM** buttons prefilled with the suggested reply, a copy-paste block of
+the submission, and the AI notes. Leads the AI has not finished, and repeat submissions, are emailed by a
+sweep after 10 minutes, so none is missed. Outlook strips `sms:` links, so Text goes through `static/text.html`,
+which reads the number and message from the URL fragment (never sent to a server) and opens Messages. Resend one
+lead's email: POST `{"lead_email_lead_id": "<uuid>", "force": true}` to lead-enrich.
 
 ## Alerts (lead-watchdog)
 
