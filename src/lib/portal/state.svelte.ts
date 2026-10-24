@@ -1,4 +1,5 @@
 import { goto } from '$app/navigation';
+import { page } from '$app/state';
 import type { InventoryItem } from '#lib/api/intake.js';
 import type { Identity } from '#lib/format.js';
 import type { Decoded } from '#lib/vin.js';
@@ -6,8 +7,30 @@ import type { Compressed } from '#lib/images.js';
 import { SOURCES, type Source } from '#lib/config.js';
 
 export type Mode = 'buy' | 'sell' | 'trade';
-export type Screen = 'choice' | 'buy' | 'sell1' | 'sell2' | 'done';
-export const SCREEN_ORDER: Screen[] = ['choice', 'buy', 'sell1', 'sell2', 'done'];
+export type Screen =
+	| 'choice'
+	| 'buy'
+	| 'showroom'
+	| 'sell-car'
+	| 'sell-numbers'
+	| 'sell-photos'
+	| 'sell-you'
+	| 'sell-more'
+	| 'done';
+export type Sheet = 'ask' | 'menu';
+export const SCREEN_ORDER: Screen[] = [
+	'choice',
+	'buy',
+	'showroom',
+	'sell-car',
+	'sell-numbers',
+	'sell-photos',
+	'sell-you',
+	'sell-more',
+	'done'
+];
+// The sell flow asks one thing per screen. sell-more is optional and comes after the lead is sent.
+export const SELL_STEPS: Screen[] = ['sell-car', 'sell-numbers', 'sell-photos', 'sell-you'];
 
 export interface Photo extends Compressed {
 	url: string; // object URL for the preview thumbnail
@@ -81,6 +104,8 @@ export const portal = $state({
 	inv: [] as InventoryItem[],
 	past: [] as InventoryItem[],
 	invLoaded: false,
+	// Which showroom slide is showing, so closing a sheet or coming Back keeps the place.
+	showIndex: 0,
 	tradeGroupId: '',
 	buy: null as BuyResult | null,
 	sell: null as SellResult | null,
@@ -101,8 +126,26 @@ export function readSource(): void {
 }
 
 // Shallow navigation: a new history entry carrying the screen, same URL, no load.
-export function go(screen: Screen): void {
-	goto(location.href, { state: { screen }, shallow: true });
+// replace swaps the current entry instead, so Back skips a sheet that has done its job.
+export function go(screen: Screen, replace = false): void {
+	goto(location.href, { state: { screen }, shallow: true, replace });
+}
+
+// Sheets get their own history entry, so the phone's Back gesture closes the
+// sheet instead of leaving the screen underneath it.
+export function openSheet(sheet: Sheet): void {
+	goto(location.href, { state: { screen: page.state.screen ?? 'choice', sheet }, shallow: true });
+}
+
+export function closeSheet(): void {
+	if (page.state.sheet) history.back();
+}
+
+// Opens the car view on one showroom car. From the side menu it replaces the
+// menu's history entry, so Back returns to the screen, not to the open menu.
+export function openCar(index: number, replace = false): void {
+	portal.showIndex = index;
+	go('showroom', replace);
 }
 
 // History-backed Back. Any screen past "choice" has a pushState behind it.
@@ -114,7 +157,15 @@ export function back(current: Screen): void {
 export function start(mode: Mode): void {
 	portal.mode = mode;
 	if (mode !== 'sell') portal.buyForm.has_trade = mode === 'trade';
-	go(mode === 'sell' ? 'sell1' : 'buy');
+	go(mode === 'sell' ? 'sell-car' : 'buy');
+}
+
+// From the confirmation into the showroom: a fresh start, so the page lets it
+// through instead of sending anyone leaving "done" back to the choice screen.
+export function browseAgain(): void {
+	portal.mode = 'buy';
+	portal.buyForm.has_trade = false;
+	goto(location.href, { state: { screen: 'buy', restart: true }, shallow: true });
 }
 
 export function finish(ref: string, photo: string | null, spec: string, note: string): void {
@@ -123,25 +174,18 @@ export function finish(ref: string, photo: string | null, spec: string, note: st
 		n = 'Paired with ' + portal.buy.ref + ' for the car you asked about.';
 	}
 	portal.done = { ref, photo, spec, note: n };
-	go('done');
+	go('done', true);
 }
 
 export function photoCount(): number {
 	return Object.keys(portal.photos).length;
 }
 
-export function railFor(screen: Screen): { label: string; step?: string } {
-	const trade = portal.mode === 'trade';
-	switch (screen) {
-		case 'buy':
-			return trade ? { label: 'Trade', step: '1 of 3' } : { label: 'Buy' };
-		case 'sell1':
-			return trade ? { label: 'Trade', step: '2 of 3' } : { label: 'Sell', step: '1 of 2' };
-		case 'sell2':
-			return trade ? { label: 'Trade', step: '3 of 3' } : { label: 'Sell', step: '2 of 2' };
-		case 'done':
-			return { label: 'Sent' };
-		default:
-			return { label: '' };
-	}
+// "1 / 4" on the sell steps. The trade flow uses the same four steps after the buy sheet.
+export function sellStep(screen: Screen): { n: number; of: number } {
+	return { n: SELL_STEPS.indexOf(screen) + 1, of: SELL_STEPS.length };
+}
+
+export function sellEyebrow(): string {
+	return portal.mode === 'trade' ? 'Your trade-in' : 'Sell or trade';
 }

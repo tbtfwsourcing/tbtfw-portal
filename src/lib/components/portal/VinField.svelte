@@ -1,34 +1,26 @@
 <script lang="ts">
 	import { portal } from '#lib/portal/state.svelte.js';
-	import { cleanVin, vinValid, decodeVin, decodedIsEmpty, type Decoded } from '#lib/vin.js';
+	import { cleanVin, vinValid, decodeVin, decodedIsEmpty } from '#lib/vin.js';
 	import FloatField from '#lib/components/FloatField.svelte';
+
+	interface Props {
+		// A message from the step's own submit check ("Enter the full VIN").
+		error?: string;
+	}
+	let { error = '' }: Props = $props();
 
 	let fe = $state('');
 	let status = $state('');
-	let words = $state<{ text: string; cls: string }[]>([]);
-	let decoded = $state(false);
+	let reading = $state(false);
 	let lastDecoded = '';
 
+	const d = $derived(portal.decoded && !decodedIsEmpty(portal.decoded) ? portal.decoded : null);
+
 	function reset() {
-		words = [];
 		status = '';
-		decoded = false;
+		reading = false;
 		portal.decoded = null;
 		lastDecoded = '';
-	}
-
-	function assemble(d: Decoded) {
-		words = (
-			[
-				[d.year, 'y'],
-				[d.make, 'm'],
-				[d.model, 'o'],
-				[d.trim, 't']
-			] as [string, string][]
-		)
-			.filter((w) => w[0])
-			.map(([text, cls]) => ({ text, cls }));
-		status = '';
 	}
 
 	async function oninput(e: Event) {
@@ -50,17 +42,18 @@
 		portal.vinOk = true;
 		if (v === lastDecoded) return;
 		lastDecoded = v;
-		decoded = true;
-		words = [];
-		status = 'Reading the VIN';
+		portal.decoded = null;
+		reading = true;
+		status = '';
 		try {
-			const d = await decodeVin(v);
+			const r = await decodeVin(v);
 			if (portal.sellForm.vin !== v) return;
-			portal.decoded = d;
-			if (!decodedIsEmpty(d)) assemble(d);
-			else status = 'VIN accepted. We will read the build on our side.';
+			portal.decoded = r;
+			if (decodedIsEmpty(r)) status = 'VIN accepted. We will read the build on our side.';
 		} catch {
 			if (portal.sellForm.vin === v) status = 'VIN accepted. We will read the build on our side.';
+		} finally {
+			if (portal.sellForm.vin === v) reading = false;
 		}
 	}
 
@@ -70,114 +63,88 @@
 	}
 </script>
 
-<div class="vinwrap" class:decoded>
-	<div class="identity" aria-live="polite">
-		{#each words as w, i (w.cls)}
-			<span class="w {w.cls} in" style:animation-delay="{i * 90}ms">{w.text}</span>
-		{/each}
-		{#if words.length}<span class="rule in"></span>{/if}
-		{#if status}<span class="status">{status}</span>{/if}
-	</div>
-	<FloatField
-		id="vin"
-		label="VIN"
-		value={portal.sellForm.vin}
-		error={fe}
-		maxlength={17}
-		autocapitalize="characters"
-		autocomplete="off"
-		autocorrect="off"
-		spellcheck={false}
-		inputmode="text"
-		required
-		{oninput}
-		{onblur}
-	/>
+<FloatField
+	id="vin"
+	label="VIN"
+	class="vin"
+	value={portal.sellForm.vin}
+	error={fe || error}
+	maxlength={17}
+	autocapitalize="characters"
+	autocomplete="off"
+	autocorrect="off"
+	spellcheck={false}
+	inputmode="text"
+	enterkeyhint="done"
+	required
+	{oninput}
+	{onblur}
+/>
+
+<div class="found" aria-live="polite">
+	{#if d}
+		<!-- The moment the VIN reads back as the customer's own car. -->
+		<div class="card">
+			<p class="eyebrow ok"><span class="tick" aria-hidden="true">&#10003;</span>Found it</p>
+			<p class="disp car"><span class="num">{d.year}</span> {d.make} {d.model}</p>
+			{#if d.trim}<p class="trim">{d.trim}</p>{/if}
+		</div>
+	{:else if reading}
+		<p class="status">Reading the VIN</p>
+	{:else if status}
+		<p class="status">{status}</p>
+	{/if}
 </div>
 
 <style>
-	.vinwrap {
-		margin-top: 4px;
+	:global(.vin input) {
+		font-variant-numeric: tabular-nums;
+		letter-spacing: 0.08em;
 	}
-	.identity {
-		margin: 8px 0 2px;
+	.found {
+		min-height: 24px;
 	}
-	.identity .w {
-		display: block;
-		font-family: var(--font-disp);
-		font-stretch: 118%;
-		font-weight: 500;
-		font-size: 28px;
-		line-height: 1.08;
-		letter-spacing: -0.012em;
-		opacity: 0;
-		transform: translateY(8px);
+	.card {
+		border: 1px solid var(--hair-strong);
+		padding: 20px 18px 22px;
+		animation: in 520ms cubic-bezier(0.2, 0.7, 0.2, 1) both;
 	}
-	.identity .w.in {
-		animation: settle 320ms ease-out forwards;
-	}
-	.identity .w.y {
-		font-family: var(--font-sans);
-		font-stretch: normal;
-		font-weight: 500;
-		font-size: 10.5px;
-		letter-spacing: 0.26em;
-		text-transform: uppercase;
+	.ok {
+		display: flex;
+		align-items: center;
+		gap: 10px;
 		color: var(--bone);
-		margin-bottom: 8px;
 	}
-	.identity .w.t {
-		font-stretch: 108%;
-		font-weight: 400;
-		font-size: 18px;
-		margin-top: 4px;
+	.tick {
+		display: inline-grid;
+		place-items: center;
+		width: 18px;
+		height: 18px;
+		border: 1px solid var(--bone);
+		border-radius: 999px;
+		font-size: 10px;
+		letter-spacing: 0;
+	}
+	.car {
+		margin-top: 16px;
+		font-size: 26px;
+		text-wrap: balance;
+		animation: in 620ms cubic-bezier(0.2, 0.7, 0.2, 1) 120ms both;
+	}
+	.trim {
+		margin-top: 8px;
+		font-size: 14px;
 		color: var(--mute);
+		animation: in 620ms cubic-bezier(0.2, 0.7, 0.2, 1) 220ms both;
 	}
-	.identity .rule {
-		display: block;
-		height: 1px;
-		background: var(--hair);
-		transform: scaleX(0);
-		transform-origin: left;
-		margin: 12px 0 4px;
-	}
-	.identity .rule.in {
-		animation: draw 420ms ease-out 360ms forwards;
-	}
-	.identity .status {
-		display: block;
-		color: var(--mute);
-		font-size: 13px;
-		min-height: 20px;
-	}
-	@keyframes settle {
-		to {
-			opacity: 1;
-			transform: none;
-		}
-	}
-	@keyframes draw {
-		to {
-			transform: scaleX(1);
-		}
-	}
-	/* Once decoded the VIN itself recedes to a quiet reference line under its
-	   lifted label; the label keeps the normal lifted offset so they never overlap. */
-	.vinwrap.decoded :global(.field input) {
+	.status {
 		font-size: 13px;
 		color: var(--mute);
-		padding-top: 20px;
-		padding-bottom: 8px;
-		letter-spacing: 0.06em;
 	}
-	.vinwrap.decoded :global(.field label) {
-		color: var(--mute);
-	}
-	@media (prefers-reduced-motion: reduce) {
-		.identity .w,
-		.identity .rule {
-			opacity: 1;
-			transform: none;
+	@keyframes in {
+		from {
+			opacity: 0;
+			transform: translateY(8px);
 		}
 	}
 </style>
