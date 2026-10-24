@@ -2,9 +2,14 @@
 <html lang="en">
 	<head>
 		<meta charset="utf-8" />
-		<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+		<!-- interactive-widget: the layout viewport shrinks with the keyboard on Android, so 100dvh and fixed-bottom toasts stay in view. -->
+		<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content" />
 		<meta name="theme-color" content="#000000" />
 		<meta name="color-scheme" content="dark" />
+		<!-- Added to the home screen, both apps open full screen with the status bar drawn over the black ground. -->
+		<meta name="mobile-web-app-capable" content="yes" />
+		<meta name="apple-mobile-web-app-capable" content="yes" />
+		<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
 		%sveltekit.head%
 	</head>
 	<body data-sveltekit-preload-data="hover">

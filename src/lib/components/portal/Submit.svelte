@@ -23,7 +23,7 @@
 		{disabled}
 		{onclick}
 		variant="ghost"
-		class="mt-1 block h-auto min-h-[52px] w-full rounded-none border-t border-hair bg-transparent text-[15px] font-normal text-foreground hover:bg-transparent hover:text-bone"
+		class="mt-1 block h-auto min-h-[52px] w-full rounded-none border-t border-hair bg-transparent text-[15px] font-normal text-foreground hover:bg-transparent hover:text-bone active:text-bone"
 	>
 		{@render children()}
 	</Button>
@@ -33,7 +33,7 @@
 		disabled={disabled || sending}
 		{onclick}
 		aria-live="polite"
-		class="mt-2 h-14 w-full rounded-none bg-foreground text-[15px] font-medium tracking-[.02em] text-background transition-colors hover:bg-bone hover:text-background disabled:opacity-50"
+		class="mt-2 h-14 w-full rounded-none bg-foreground text-[15px] font-medium tracking-[.02em] text-background transition-colors hover:bg-bone hover:text-background active:bg-bone disabled:opacity-50"
 	>
 		{#if sending}
 			<span class="num">{busy.label}</span>

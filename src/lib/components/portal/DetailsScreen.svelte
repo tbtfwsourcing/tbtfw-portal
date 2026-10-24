@@ -129,6 +129,12 @@
 		text-underline-offset: 4px;
 		cursor: pointer;
 		padding: 10px 0;
+		min-height: 44px;
+		display: inline-flex;
+		align-items: center;
+	}
+	.addrow label:active {
+		color: var(--bone);
 	}
 	.addrow:has(input:focus-visible) label {
 		outline: 1px solid var(--bone);

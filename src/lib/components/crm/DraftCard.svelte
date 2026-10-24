@@ -8,6 +8,7 @@
 	import { Input } from '#lib/components/ui/input/index.js';
 	import { Textarea } from '#lib/components/ui/textarea/index.js';
 	import LeadChips from './LeadChips.svelte';
+	import ContactLine from './ContactLine.svelte';
 	import Confirm from './Confirm.svelte';
 
 	let { draft }: { draft: Draft } = $props();
@@ -106,10 +107,11 @@
 		load();
 	}
 
+	// 44px tall on phones (Apple's minimum target), their natural height from sm:.
 	const btn =
-		'h-auto rounded-none border border-foreground bg-transparent px-4 py-3 text-[11px] font-normal tracking-[.14em] uppercase text-foreground hover:border-bone hover:bg-transparent hover:text-bone';
+		'h-auto min-h-11 rounded-none border border-foreground bg-transparent px-4 py-3 text-[11px] font-normal tracking-[.14em] uppercase text-foreground hover:border-bone hover:bg-transparent hover:text-bone active:border-bone active:text-bone sm:min-h-0';
 	const btnPrimary =
-		'h-auto rounded-none border border-foreground bg-foreground px-4 py-3 text-[11px] font-normal tracking-[.14em] uppercase text-background hover:border-bone hover:bg-bone hover:text-background';
+		'h-auto min-h-11 rounded-none border border-foreground bg-foreground px-4 py-3 text-[11px] font-normal tracking-[.14em] uppercase text-background hover:border-bone hover:bg-bone hover:text-background active:border-bone active:bg-bone sm:min-h-0';
 	const btnSmall = 'px-3 py-2 text-[10px]';
 </script>
 
@@ -146,9 +148,7 @@
 		<div class="mt-1 text-[13px] text-mute"><b class="eyebrow mr-2 text-[10px]">Missing</b>{l.missing_info}</div>
 	{/if}
 
-	<div class="mt-2 text-[12.5px] text-mute">
-		<b class="font-medium text-foreground">{l.full_name ?? ''}</b> // {l.phone ?? ''} // {l.email ?? ''}{l.zip ? ' // ' + l.zip : ''}{l.contact_pref ? ' // prefers ' + l.contact_pref : ''}
-	</div>
+	<ContactLine lead={l} />
 	{#if l.message}<div class="mt-2 text-[12.5px] text-mute">Their note: {l.message}</div>{/if}
 	{#if draft.purpose === 'reply' && lastIn}
 		<div class="mt-3 border-b border-hair py-2.5 text-[13.5px]">
@@ -165,12 +165,12 @@
 		<Input
 			bind:value={subject}
 			placeholder="Subject"
-			class="mt-2.5 h-auto rounded-none border-hair bg-background px-3 py-2.5 text-sm focus-visible:border-foreground focus-visible:ring-0"
+			class="mt-2.5 h-auto rounded-none border-hair bg-background px-3 py-2.5 text-base focus-visible:border-foreground focus-visible:ring-0 sm:text-sm"
 		/>
 	{/if}
 	<Textarea
 		bind:value={body}
-		class="mt-2.5 min-h-[150px] rounded-none border-hair bg-background px-3 py-3 text-sm leading-normal focus-visible:border-foreground focus-visible:ring-0"
+		class="mt-2.5 min-h-[150px] rounded-none border-hair bg-background px-3 py-3 text-base leading-normal focus-visible:border-foreground focus-visible:ring-0 sm:text-sm"
 	/>
 
 	<!-- Phone: 2-col grid, primary full width, secondaries in the cells, Open lead on its own

@@ -47,11 +47,11 @@
 {:else}
 	<Textarea
 		bind:value={text}
-		class="min-h-[420px] rounded-none border-hair bg-background px-3 py-3 text-[13.5px] leading-normal focus-visible:border-foreground focus-visible:ring-0"
+		class="min-h-[420px] rounded-none border-hair bg-background px-3 py-3 text-base leading-normal focus-visible:border-foreground focus-visible:ring-0 sm:text-[13.5px]"
 	/>
 	<div class="mt-3 flex flex-wrap items-center gap-2.5">
 		<Button
-			class="h-auto rounded-none border border-foreground bg-foreground px-4 py-3 text-[11px] font-normal tracking-[.14em] uppercase text-background hover:border-bone hover:bg-bone"
+			class="h-auto min-h-11 rounded-none border border-foreground bg-foreground px-4 py-3 text-[11px] font-normal tracking-[.14em] uppercase text-background hover:border-bone hover:bg-bone active:border-bone active:bg-bone sm:min-h-0"
 			disabled={saving}
 			onclick={() => (pending = true)}
 		>

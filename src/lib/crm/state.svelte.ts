@@ -23,13 +23,21 @@ export const crm = $state({
 	lastLoaded: 0 // epoch ms of the last successful load(); 0 until then
 });
 
+// The key arrives as ?k= and is kept in localStorage, so the page added to a
+// phone's home screen (whose start URL carries no query) still opens the queue.
+const KEY_STORE = 'tbtfw.portalKey';
+
 export function readKey(): void {
 	if (typeof window === 'undefined') return;
+	let k = '';
 	try {
-		crm.key = new URLSearchParams(location.search).get('k') ?? '';
+		k = new URLSearchParams(location.search).get('k') ?? '';
+		if (k) localStorage.setItem(KEY_STORE, k);
+		else k = localStorage.getItem(KEY_STORE) ?? '';
 	} catch {
-		crm.key = '';
+		/* no storage; the URL key alone still works */
 	}
+	crm.key = k;
 }
 
 export function leadById(id: string): Lead | null {

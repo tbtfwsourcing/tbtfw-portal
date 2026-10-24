@@ -72,6 +72,7 @@
 							src={sized(i.image_url, 800)}
 							alt={[i.year, i.make, i.model, i.trim].filter(Boolean).join(' ')}
 							loading="lazy"
+							decoding="async"
 							onerror={(e) => fallback(e, i.image_url)}
 						/>
 					{/if}
@@ -146,14 +147,18 @@
 		background: var(--surface);
 		color: var(--fg);
 	}
+	/* On phones the scroller runs edge to edge: cards peek in from the right so
+	   the row reads as swipeable, and snap points line up with the 20px gutter. */
 	.picker {
 		display: flex;
 		gap: 10px;
 		overflow-x: auto;
 		scroll-snap-type: x mandatory;
+		scroll-padding-inline: 20px;
+		overscroll-behavior-x: contain;
 		-webkit-overflow-scrolling: touch;
-		padding: 2px 2px 8px;
-		margin: 0 -2px;
+		padding: 2px 20px 8px;
+		margin: 0 -20px;
 		scrollbar-width: none;
 	}
 	.picker::-webkit-scrollbar {
@@ -169,6 +174,8 @@
 		border: 1px solid var(--hair);
 		background: var(--bg);
 		cursor: pointer;
+		-webkit-user-select: none;
+		user-select: none;
 		transition:
 			transform 120ms ease-out,
 			border-color 120ms;
@@ -246,6 +253,7 @@
 			gap: 12px;
 			overflow: visible;
 			scroll-snap-type: none;
+			scroll-padding-inline: 0;
 			padding: 2px 0 8px;
 		}
 		.car {

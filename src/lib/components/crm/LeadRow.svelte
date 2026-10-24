@@ -9,6 +9,7 @@
 	import { Textarea } from '#lib/components/ui/textarea/index.js';
 	import Chip from './Chip.svelte';
 	import LeadChips from './LeadChips.svelte';
+	import ContactLine from './ContactLine.svelte';
 	import Thread from './Thread.svelte';
 	import Confirm from './Confirm.svelte';
 
@@ -83,7 +84,7 @@
 	}
 
 	const btnSmall =
-		'h-auto rounded-none border border-foreground bg-transparent px-3 py-2 text-[10px] font-normal tracking-[.14em] uppercase text-foreground hover:border-bone hover:bg-transparent hover:text-bone';
+		'h-auto min-h-11 rounded-none border border-foreground bg-transparent px-3 py-2 text-[10px] font-normal tracking-[.14em] uppercase text-foreground hover:border-bone hover:bg-transparent hover:text-bone active:border-bone active:text-bone sm:min-h-0';
 </script>
 
 {#snippet summary()}
@@ -103,9 +104,10 @@
 	{/if}
 {/snippet}
 
-<div id="l-{lead.id}" class="border-b border-hair py-3.5">
+<!-- scroll-margin keeps the row clear of the sticky header when "Open lead" scrolls to it. -->
+<div id="l-{lead.id}" class="border-b border-hair py-3.5" style:scroll-margin-top="calc(var(--hdr, 0px) + 8px)">
 	{#if !open}
-		<button type="button" class="block w-full cursor-pointer text-left" onclick={() => (crm.openId = lead.id)}>
+		<button type="button" class="block w-full cursor-pointer text-left transition-opacity active:opacity-60" onclick={() => (crm.openId = lead.id)}>
 			{@render summary()}
 			{#if lead.flag}
 				<div class="mt-2 text-[13px] text-bone"><b class="eyebrow mr-2 text-[10px] text-bone">Flag</b>{lead.flag}</div>
@@ -125,9 +127,7 @@
 			{#if lead.missing_info}
 				<div class="mt-1 text-[13px] text-mute"><b class="eyebrow mr-2 text-[10px]">Missing</b>{lead.missing_info}</div>
 			{/if}
-			<div class="mt-2 text-[12.5px] text-mute">
-				<b class="font-medium text-foreground">{lead.full_name ?? ''}</b> // {lead.phone ?? ''} // {lead.email ?? ''}{lead.zip ? ' // ' + lead.zip : ''}{lead.contact_pref ? ' // prefers ' + lead.contact_pref : ''}
-			</div>
+			<ContactLine {lead} />
 			{#if isSell}
 				<div class="mt-2 text-[12.5px] text-mute">
 					VIN {lead.vin ?? ''}{lead.intent ? ' // ' + lead.intent : ''}{lead.condition ? ' // ' + lead.condition : ''}{lead.photo_count ? ' // ' + lead.photo_count + ' photos' : ''}

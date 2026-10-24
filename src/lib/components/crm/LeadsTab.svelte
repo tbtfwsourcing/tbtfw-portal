@@ -8,8 +8,10 @@
 	const leads = $derived(all.filter(matches));
 	const stages = $derived(crm.data?.stages ?? []);
 
+	// 16px on phones so iOS does not zoom the page when a select or the search field opens;
+	// at that size the filters read in sentence case, matching the search field beside them.
 	const sel =
-		'h-[42px] border border-hair bg-background px-3 text-xs tracking-[.08em] uppercase text-foreground outline-none focus:border-foreground';
+		'h-11 appearance-none border border-hair bg-background px-3 text-base text-foreground outline-none focus:border-foreground sm:h-[42px] sm:text-xs sm:tracking-[.08em] sm:uppercase';
 </script>
 
 <div class="mt-4 mb-1 flex flex-wrap items-center gap-2">
@@ -17,7 +19,11 @@
 		type="search"
 		bind:value={crm.filters.q}
 		placeholder="Search name, phone, VIN, ref, car"
-		class="h-[42px] min-w-[220px] flex-1 rounded-none border-hair bg-background px-3 text-base focus-visible:border-foreground focus-visible:ring-0 sm:text-sm"
+		enterkeyhint="search"
+		autocomplete="off"
+		autocorrect="off"
+		autocapitalize="none"
+		class="h-11 min-w-[220px] flex-1 appearance-none rounded-none border-hair bg-background px-3 text-base focus-visible:border-foreground focus-visible:ring-0 sm:h-[42px] sm:text-sm"
 	/>
 	<select class={sel} bind:value={crm.filters.kind} aria-label="Kind">
 		<option value="all">All kinds</option>

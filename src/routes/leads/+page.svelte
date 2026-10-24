@@ -40,6 +40,8 @@
 					(updated ? ' // UPDATED ' + updated : '')
 	);
 
+	// The sticky header's height, so a lead scrolled into view lands below it (see LeadRow).
+	let headerH = $state(0);
 	let refreshing = $state(false);
 	async function refresh() {
 		if (refreshing) return;
@@ -73,12 +75,13 @@
 	$effect(() => {
 		const id = crm.openId;
 		if (crm.tab === 'leads' && id) {
-			tick().then(() => document.getElementById('l-' + id)?.scrollIntoView({ block: 'start' }));
+			tick().then(() => document.getElementById('l-' + id)?.scrollIntoView({ block: 'start', behavior: 'smooth' }));
 		}
 	});
 
+	// On phones the three tabs share the width as thumb-height segments; from sm: they hug their labels.
 	const trigger =
-		'eyebrow h-auto flex-none rounded-none border-0 px-4 pt-2.5 pb-3 text-[11px] tracking-[.16em] text-mute data-active:bg-transparent data-active:text-foreground data-active:shadow-none hover:text-foreground after:bottom-[-1px] after:h-0.5 after:bg-foreground';
+		'eyebrow h-auto min-h-11 flex-1 rounded-none border-0 px-4 pt-2.5 pb-3 text-[11px] tracking-[.16em] text-mute data-active:bg-transparent data-active:text-foreground data-active:shadow-none hover:text-foreground active:text-foreground after:bottom-[-1px] after:h-0.5 after:bg-foreground sm:min-h-0 sm:flex-none';
 </script>
 
 <svelte:head>
@@ -86,18 +89,22 @@
 	<meta name="robots" content="noindex, nofollow" />
 </svelte:head>
 
-<div class="mx-auto max-w-[980px] px-4 pb-24">
+<div class="mx-auto max-w-[980px] px-4 pb-[calc(96px+env(safe-area-inset-bottom))]" style:--hdr="{headerH}px">
 	<Tabs.Root bind:value={crm.tab as string} onValueChange={(v) => (crm.tab = v as Tab)}>
-		<header class="sticky top-0 z-10 border-b border-hair bg-background pt-[calc(18px+env(safe-area-inset-top))]">
+		<header
+			bind:clientHeight={headerH}
+			class="sticky top-0 z-10 border-b border-hair bg-background pt-[calc(18px+env(safe-area-inset-top))]"
+		>
 			<!-- On a phone the stat line drops under the wordmark and may wrap; from sm: it is one line. -->
 			<div class="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1.5">
 				<Wordmark suffix="LEADS" />
 				<div class="flex min-w-0 items-center gap-1.5">
 					<div class="eyebrow num sm:whitespace-nowrap">{stat}</div>
+					<!-- 44px square on phones, with negative margin so the icon stays visually 24px from the edge. -->
 					<Button
 						variant="ghost"
 						size="icon-xs"
-						class="rounded-none text-mute hover:bg-transparent hover:text-foreground"
+						class="-my-2.5 -mr-2.5 size-11 rounded-none text-mute hover:bg-transparent hover:text-foreground active:text-foreground sm:m-0 sm:size-6"
 						aria-label="Refresh"
 						onclick={refresh}
 					>
@@ -105,7 +112,7 @@
 					</Button>
 				</div>
 			</div>
-			<Tabs.List data-variant="line" class="mt-3 h-auto w-auto justify-start gap-0 rounded-none bg-transparent p-0">
+			<Tabs.List data-variant="line" class="mt-3 flex h-auto w-full justify-start gap-0 rounded-none bg-transparent p-0 sm:inline-flex sm:w-auto">
 				<Tabs.Trigger value="queue" class={trigger}>
 					Queue{#if drafts}<span class="ml-1.5 text-bone">{drafts}</span>{/if}
 				</Tabs.Trigger>
