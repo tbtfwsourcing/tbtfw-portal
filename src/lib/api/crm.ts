@@ -50,6 +50,7 @@ export interface Lead {
 	stock_id?: string;
 	wanted_text?: string;
 	intent?: string;
+	timeline?: string;
 	condition?: string;
 	photo_count?: number;
 	// grading
@@ -62,6 +63,7 @@ export interface Lead {
 	comps_median?: number | null;
 	flag?: string;
 	missing_info?: string;
+	enrich_error?: string | null;
 	messages?: Message[];
 }
 
@@ -73,6 +75,7 @@ export interface Draft {
 	subject?: string;
 	body?: string;
 	to_address?: string;
+	created_at?: string;
 }
 
 export interface QueueData {
@@ -80,8 +83,10 @@ export interface QueueData {
 	message?: string;
 	drafts: Draft[];
 	leads: Lead[];
-	channels: { email?: boolean; sms?: boolean };
+	// email_via is "graph:<mailbox>" when Outlook sends, "resend" on the fallback, null when off.
+	channels: { email?: boolean; email_via?: string | null; sms?: boolean };
 	stages?: string[];
+	actor?: string;
 }
 
 export interface Voice {

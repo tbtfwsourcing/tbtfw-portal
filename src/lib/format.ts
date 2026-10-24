@@ -103,3 +103,23 @@ export function ago(iso: Maybe): string {
 }
 
 export const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+
+// The CRM's title for a lead: the car when the lead names one, otherwise what a
+// buyer typed, so a buy lead reads "Ferrari SP3" rather than "unknown car".
+export function carName(l: Parameters<typeof identityPlain>[0] & { wanted_text?: Maybe; stock_id?: Maybe }): string {
+	const id = identityPlain(l);
+	if (id !== 'unknown car') return id;
+	if (present(l.wanted_text)) return String(l.wanted_text).trim();
+	return present(l.stock_id) ? 'Stock ' + l.stock_id : 'Unknown car';
+}
+
+// What a draft is for, as the queue labels it.
+export function purposeLabel(p: Maybe): string {
+	const s = String(p ?? '');
+	return s === 'first_touch' ? 'First touch' : s === 'follow_up' ? 'Follow-up' : s === 'reply' ? 'Reply' : s.replace(/_/g, ' ');
+}
+
+// A phone number as a dial string, keeping the leading + (tel: and sms: links).
+export function dialable(s: Maybe): string {
+	return String(s ?? '').replace(/[^\d+]/g, '');
+}

@@ -33,10 +33,11 @@ Every page is static HTML that talks to the Edge Functions from the browser. The
         portal/state.svelte.ts    the intake session: mode, forms, photos, results; shallow-routed screens
         portal/turnstile.ts       invisible Turnstile
         crm/state.svelte.ts       the CRM session: key, queue data, tab, filters
+        crm/demo.ts               dev-only made-up queue for /leads?demo (never in the build)
         components/
           FloatField  ChipGroup  Toggle  Rail  Wordmark  Footer  ProgressLine
           portal/                 ChoiceScreen, InventoryPicker, VinField, PhotoSlots, Buy/Sell/Details/Done screens
-          crm/                    DraftCard, LeadRow, Thread, LeadChips, Chip, Confirm, the three tabs
+          crm/                    DraftCard, LeadRow, LeadDetail, StageMark, Thread, Confirm, the three tabs
           ui/                     shadcn-svelte components (generated; edit freely, they are yours)
     static/                       favicon, apple-touch-icon, og.png (share image), manifest, robots, .nojekyll
     supabase/functions/           Edge Function sources (see below)
@@ -47,7 +48,7 @@ Every page is static HTML that talks to the Edge Functions from the browser. The
 ## Working locally
 
     npm install
-    npm run dev          # http://127.0.0.1:5173  — CRM at /leads?k=PORTAL_KEY
+    npm run dev          # http://127.0.0.1:5173  — CRM at /leads?k=PORTAL_KEY, or /leads?demo for made-up data
     npm run check        # svelte-check, must be clean before pushing
     npm run build        # static site into build/
     npm run preview      # serve build/
@@ -68,8 +69,9 @@ One-time repo setting: **Settings → Pages → Build and deployment → Source:
 
 - Customer and lead text is rendered through Svelte, which escapes it. Never pass user data through `{@html}`.
 - Form field names and endpoints are the backend contract — see `lib/api/*.ts`. Change them with the function.
-- Every draft on the CRM was written by the system and has **not** been sent. Send / Copy + Mark sent / Skip are
-  the only ways a draft leaves the queue.
+- Every draft on the CRM was written by the system and has **not** been sent. Send / Mark sent / Skip are the only
+  ways a draft leaves the queue. With a channel off, Open in Messages (or Mail) hands the draft to the device
+  prefilled; it still has to be marked sent by hand.
 - The CRM reads its key from `?k=` at runtime and never stores it.
 - Keep the design tokens in `app.css`. Components take their colour from `bg-foreground`, `text-mute`,
   `border-hair`, `text-bone` and friends, not from literal hex values. The palette matches tbtfw.com:

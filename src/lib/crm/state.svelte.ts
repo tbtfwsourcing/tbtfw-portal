@@ -1,5 +1,5 @@
 import { getQueue, getVoice, type QueueData, type Voice, type Lead } from '#lib/api/crm.js';
-import { identityPlain } from '#lib/format.js';
+import { identityPlain, carName } from '#lib/format.js';
 import { accessToken, sessionEmail } from './auth.svelte.js';
 
 export type Tab = 'queue' | 'leads' | 'voice';
@@ -118,10 +118,11 @@ export async function loadVoice(): Promise<void> {
 	}
 }
 
-export function matches(l: Lead): boolean {
+// ignoreStage: the stage strip counts each stage under the other filters.
+export function matches(l: Lead, ignoreStage = false): boolean {
 	const f = crm.filters;
 	if (f.kind !== 'all' && l.kind !== f.kind) return false;
-	if (f.stage !== 'all' && (l.status ?? 'new') !== f.stage) return false;
+	if (!ignoreStage && f.stage !== 'all' && (l.status ?? 'new') !== f.stage) return false;
 	if (f.verdict !== 'all' && (l.verdict ?? '') !== f.verdict) return false;
 	if (f.q) {
 		const q = f.q.toLowerCase();
@@ -132,6 +133,7 @@ export function matches(l: Lead): boolean {
 			l.vin,
 			l.ref,
 			identityPlain(l),
+			carName(l),
 			l.stock_id,
 			l.wanted_text,
 			l.notes,
