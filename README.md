@@ -107,13 +107,30 @@ One-time repo setting: **Settings → Pages → Build and deployment → Source:
     lead-inbox/         odd minutes: polls the Outlook inbox for replies (v1.0, deployed version 2)
     inventory-sync/     hourly mirror of tbtfw.com inventory (v1.1, deployed version 8)
     spec-inference/     Haiku grader, shared with the board; lead mode (v2.7, deployed version 14)
+    lead-watchdog/      every 5 min: pages Garett when the pipeline breaks (v1.0, see below)
 
-All seven portal functions are in this repo, copied from what was deployed on Oct 24, 2026. The sourcing
+All portal functions are in this repo, copied from what was deployed on Oct 24, 2026. The sourcing
 board's functions (board, *-ingest, auto-verdict, pushover-alerts, ilusso-sitemap-join) live only in Supabase.
 Redeploy with the full file (never a stub) from the dashboard, the Supabase MCP, or
 `supabase functions deploy <name> --project-ref qymkzfhdneukffeilrhx`. verify_jwt: `lead-intake`, `lead-crm`,
 `ms-auth` OFF (they gate themselves); the rest ON. No secrets live in these files; they read
 `Deno.env` and Vault at runtime.
+
+## Alerts (lead-watchdog)
+
+`lead-watchdog` runs every five minutes (pg_cron job `portal-lead-watchdog-5min`) and sends Garett a
+Pushover alert when something stops working: a real lead that never reached the phone (15 min), Pushover
+rejecting alerts, the Outlook connection failing, background jobs erroring or stopping, the intake API,
+inventory feed, CRM API or site being down (two checks in a row), AI drafts stuck or given up, or inventory
+not syncing for 3 h. It judges outcomes from one read-only RPC, `public.watchdog_signals()`
+(service_role only; SQL in `supabase/sql/2026-10-24_watchdog_signals.sql`). One push per problem, repeated
+every 2 h (critical) or 12 h (warning) while open, then a quiet "resolved". Pushes carry lead refs, never
+customer names. State is `portal_kv` key `watchdog_state`.
+
+- Check it without paging anyone: POST `{"dry_run": true}`. Prove delivery: POST `{"test": true}` (one per
+  10 min). Easiest from SQL: `net.http_post` to the function with the same bearer the cron job uses.
+- Optional second channel: set the function secret `WATCHDOG_HEARTBEAT_URL` to a healthchecks.io ping URL
+  (period 5 min, grace 15 min). It then emails if Supabase, cron or Pushover itself is down.
 
 ## Never commit
 
