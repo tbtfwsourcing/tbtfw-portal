@@ -78,6 +78,9 @@ One-time repo settings: **Settings → Pages → Build and deployment → Source
 concierge.tbtfw.com** with Enforce HTTPS. DNS at GoDaddy (tbtfw.com sits in Zachary Ersoff's account): CNAME `concierge` →
 `tbtfwsourcing.github.io`, plus the TXT `_github-pages-challenge-tbtfwsourcing.concierge` that verifies the domain
 for this GitHub account (Settings → Pages → Verified domains), so no other account can publish on it.
+The address also lives in Supabase Auth (Site URL and redirect URLs) and in the Cloudflare Turnstile widget's
+hostnames (account tbtfw.sourcing@gmail.com). A new address needs all three, or sign-in links and the form's
+bot check break.
 
 ## Rules that keep the pages working
 
