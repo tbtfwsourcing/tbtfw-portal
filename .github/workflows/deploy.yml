@@ -29,8 +29,9 @@ jobs:
       - run: npm run check
       - run: npm run build
         env:
-          # The repo is served at https://tbtfwsourcing.github.io/tbtfw-portal/
-          BASE_PATH: /tbtfw-portal
+          # Served at the root of https://concierge.tbtfw.com (the Pages custom domain), so no base
+          # path. The old https://tbtfwsourcing.github.io/tbtfw-portal/ links redirect there.
+          BASE_PATH: ''
       - uses: actions/upload-pages-artifact@v3
         with:
           path: build

@@ -3,7 +3,7 @@ import { sveltekit } from '@sveltejs/kit/vite';
 import tailwindcss from '@tailwindcss/vite';
 import { defineConfig } from 'vite';
 
-// GitHub Pages serves this repo from /tbtfw-portal. Set BASE_PATH='' for a root deploy.
+// Served at the root of concierge.tbtfw.com. BASE_PATH=/tbtfw-portal builds for the old github.io path.
 const base = (process.env.BASE_PATH ?? '') as '' | `/${string}`;
 
 export default defineConfig({

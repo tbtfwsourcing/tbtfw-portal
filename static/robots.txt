@@ -1,5 +1,6 @@
 User-agent: *
 Allow: /
 Disallow: /leads.html
+Disallow: /leads
 Disallow: /legacy/
-Sitemap: https://tbtfwsourcing.github.io/tbtfw-portal/sitemap.xml
+Sitemap: https://concierge.tbtfw.com/sitemap.xml

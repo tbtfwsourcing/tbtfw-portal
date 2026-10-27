@@ -1,4 +1,4 @@
-// TBTFW — LEAD ENRICH — Edge Function v1.7 (Oct 24, 2026)
+// TBTFW — LEAD ENRICH — Edge Function v1.7 (Oct 24, 2026; links moved to concierge.tbtfw.com Oct 27)
 // v1.7: NOTHING GOES TO THE CUSTOMER BY ITSELF; GARETT GETS THE LEAD BY EMAIL. Standing
 //       decision (G, Oct 24 2026, replacing v1.6's auto-email): every lead is emailed to
 //       LEAD_EMAIL_TO (default MS_MAILBOX, garett@tbtfw.com) from the portal mailbox through
@@ -125,10 +125,10 @@ const AUTO_SEND = false;
 // v1.7: a ready lead the AI has not finished with is emailed to Garett anyway after this long.
 const LEAD_EMAIL_FALLBACK_MINUTES = 10;
 const GRAPH_SCOPES = "offline_access User.Read Mail.Send Mail.ReadWrite";
-const CRM_DEFAULT_URL = "https://tbtfwsourcing.github.io/tbtfw-portal/leads.html";
+const CRM_DEFAULT_URL = "https://concierge.tbtfw.com/leads.html";
 // Email apps (Outlook among them) strip sms: links, so Text goes through this page, which hands
 // the number and the reply (in the fragment, never sent to a server) to Messages.
-const TEXT_PAGE_URL = "https://tbtfwsourcing.github.io/tbtfw-portal/text.html";
+const TEXT_PAGE_URL = "https://concierge.tbtfw.com/text.html";
 const DEFAULT_VOICE =
   "You are Garett, a salesperson at TBTFW, a family-owned hypercar and luxury dealership in Beverly Hills. You write my CRM messages in MY voice: direct, plain-spoken, short. No sales fluff, no corporate speak, no hype. If it sounds like a salesman wrote it, rewrite it.\n\n" +
   "For every lead, classify BUYER, SELLER, or JUNK first. Draft only. Nothing is ever sent without my explicit approval.\n\n" +

@@ -42,7 +42,7 @@ export const SITE = {
 	home: 'https://www.tbtfw.com',
 	privacy: 'https://www.tbtfw.com/policies/privacy-policy',
 	// Canonical URL of the deployed portal, used for og:url and the canonical tag.
-	portal: 'https://tbtfwsourcing.github.io/tbtfw-portal/',
+	portal: 'https://concierge.tbtfw.com/',
 	// Fill these in to surface them in the footer; left blank they are not rendered.
 	phone: '',
 	address: '',

@@ -51,7 +51,7 @@ Deno.serve(async (req: Request) => {
   const SUPABASE_URL = Deno.env.get("SUPABASE_URL") || "";
   const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
   if (!SUPABASE_URL || !SERVICE_KEY) return json({ ok: false, error: "platform env missing" }, 500);
-  const SITE_URL = (Deno.env.get("PORTAL_SITE_URL") || "https://tbtfwsourcing.github.io/tbtfw-portal/").replace(/\/?$/, "/");
+  const SITE_URL = (Deno.env.get("PORTAL_SITE_URL") || "https://concierge.tbtfw.com/").replace(/\/?$/, "/");
   const LEADS_URL = Deno.env.get("PORTAL_LEADS_URL") || SITE_URL + "leads.html";
   const HEARTBEAT_URL = (Deno.env.get("WATCHDOG_HEARTBEAT_URL") || "").replace(/\/+$/, "");
 

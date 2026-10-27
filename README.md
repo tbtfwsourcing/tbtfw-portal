@@ -2,7 +2,8 @@
 
 The customer intake portal (Buy / Sell / Trade) and the CRM behind it, for TBTFW in Beverly Hills.
 
-- **Live:** https://tbtfwsourcing.github.io/tbtfw-portal/ (GitHub Pages, deployed from `main` by Actions)
+- **Live:** https://concierge.tbtfw.com/ (GitHub Pages custom domain, deployed from `main` by Actions). The old
+  https://tbtfwsourcing.github.io/tbtfw-portal/ links redirect there.
 - **CRM:** `leads.html` on the same host. Sign in with your @tbtfw.com email: a one-time code arrives by email
   (Supabase Auth, no password). `lead-crm` only admits sessions on that domain (`CRM_ALLOWED_DOMAIN`, or an
   explicit `CRM_ALLOWED_EMAILS` list) and records the signed-in email on every lead event. The old
@@ -66,14 +67,17 @@ Every page is static HTML that talks to the Edge Functions from the browser. The
 Both pages talk to the **live** backend. A local submit on the portal creates a REAL lead: use an obviously fake
 name and delete it afterwards.
 
-To mirror the Pages URL locally: `BASE_PATH=/tbtfw-portal npm run build`.
+The site is served from the domain root, so a plain `npm run build` matches production.
 
 ## Shipping
 
-Push to `main`. The workflow in `.github/workflows/deploy.yml` runs `check`, builds with `BASE_PATH=/tbtfw-portal`,
+Push to `main`. The workflow in `.github/workflows/deploy.yml` runs `check`, builds with no base path,
 and deploys `build/` to GitHub Pages. About two minutes end to end; hard-refresh (or a private tab) on a phone.
 
-One-time repo setting: **Settings → Pages → Build and deployment → Source: GitHub Actions.**
+One-time repo settings: **Settings → Pages → Build and deployment → Source: GitHub Actions**, and **Custom domain:
+concierge.tbtfw.com** with Enforce HTTPS. DNS at GoDaddy (tbtfw.com sits in Zachary Ersoff's account): CNAME `concierge` →
+`tbtfwsourcing.github.io`, plus the TXT `_github-pages-challenge-tbtfwsourcing.concierge` that verifies the domain
+for this GitHub account (Settings → Pages → Verified domains), so no other account can publish on it.
 
 ## Rules that keep the pages working
 
