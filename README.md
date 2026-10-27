@@ -10,6 +10,7 @@ The customer intake portal (Buy / Sell / Trade) and the CRM behind it, for TBTFW
   Public sign-ups are off in Supabase, so only existing accounts get a code. To add someone: Supabase →
   Authentication → Users → Add user → Create new user, with their @tbtfw.com email, "Auto Confirm User"
   ticked and any long random password (nobody uses it). They then sign in with a code like everyone else.
+  The code email is sent by `auth-email` from the portal mailbox (see "Sign-in email" below).
 - **Backend:** Supabase project `qymkzfhdneukffeilrhx` — Edge Functions, Postgres, pg_cron, Vault, Storage.
 - **Docs:** the "AI Automotive Assistant" Claude project (build handoffs, design contract, ledger).
 
@@ -124,12 +125,13 @@ One-time repo setting: **Settings → Pages → Build and deployment → Source:
     inventory-sync/     hourly mirror of tbtfw.com inventory (v1.1, deployed version 8)
     spec-inference/     Haiku grader, shared with the board; lead mode (v2.7, deployed version 14)
     lead-watchdog/      every 5 min: pages Garett when the pipeline breaks (v1.0, see below)
+    auth-email/         sends the CRM sign-in code from the portal mailbox (v1.0, see below)
 
 All portal functions are in this repo, copied from what was deployed on Oct 24, 2026. The sourcing
 board's functions (board, *-ingest, auto-verdict, pushover-alerts, ilusso-sitemap-join) live only in Supabase.
 Redeploy with the full file (never a stub) from the dashboard, the Supabase MCP, or
 `supabase functions deploy <name> --project-ref qymkzfhdneukffeilrhx`. verify_jwt: `lead-intake`, `lead-crm`,
-`ms-auth` OFF (they gate themselves); the rest ON. No secrets live in these files; they read
+`ms-auth`, `auth-email` OFF (they gate themselves); the rest ON. No secrets live in these files; they read
 `Deno.env` and Vault at runtime.
 
 ## Lead emails (lead-enrich v1.7)
@@ -142,6 +144,26 @@ the submission, and the AI notes. Leads the AI has not finished, and repeat subm
 sweep after 10 minutes, so none is missed. Outlook strips `sms:` links, so Text goes through `static/text.html`,
 which reads the number and message from the URL fragment (never sent to a server) and opens Messages. Resend one
 lead's email: POST `{"lead_email_lead_id": "<uuid>", "force": true}` to lead-enrich.
+
+## Sign-in email (auth-email)
+
+Supabase Auth hands every email it sends to the **Send Email hook** (Authentication → Hooks, type
+Postgres, `public.send_auth_email`). The hook posts the event through pg_net to the `auth-email`
+function, with a shared secret from Vault (`AUTH_EMAIL_HOOK_SECRET`). The function sends the code and a
+Sign in button from the portal mailbox through Microsoft Graph, the same route as the lead emails. SQL:
+`supabase/sql/2026-10-27_auth_email_hook.sql`.
+
+Why not plain SMTP: the same email sent through Resend from `noreply@auth.tbtfw.com` was accepted by
+Microsoft 365 and then never reached the mailbox. It was a brand-new sender on a subdomain of the
+recipient's own domain, carrying a sign-in link. Mail from the tenant's own mailbox is internal and lands
+in the inbox.
+
+- A failed send is retried once. If it still fails, Garett gets a Pushover alert and a
+  `lead_events` row `auth_email_failed` is written. The code itself is never logged or pushed.
+- Fallback: turn the hook off in the dashboard. Auth then uses the SMTP settings at once: Resend,
+  `smtp.resend.com:465`, sender `noreply@auth.tbtfw.com`, verified via 3 DNS records under `auth` at
+  GoDaddy. The dashboard email templates apply only while the hook is off. Don't switch custom SMTP off:
+  that wipes the templates.
 
 ## Alerts (lead-watchdog)
 
