@@ -1,5 +1,9 @@
-// TBTFW — LEAD WATCHDOG — Edge Function v1.0 (Oct 24, 2026)
-// Makes sure Garett hears about it when the lead pipeline breaks, instead of finding out
+// TBTFW — LEAD WATCHDOG — Edge Function v1.1 (Nov 4, 2026)
+// v1.1: "Database check failed" needs two runs in a row, like the probes. One slow
+//       watchdog_signals() call (8 s statement timeout) paged Garett twice on Nov 3 and
+//       cleared itself 5 minutes later each time. While the signals are unreadable, the
+//       problems they reported stay open: no "resolved" until a check actually passes.
+// v1.0 (Oct 24, 2026): makes sure Garett hears about it when the lead pipeline breaks, instead of finding out
 // from a lead gone cold. Runs every five minutes from pg_cron (anon bearer, verify_jwt ON,
 // like the other jobs) and judges OUTCOMES, not just whether jobs ran:
 //   lead_unalerted  a real lead (not duplicate/junk) ready 15+ min with no push   CRITICAL
@@ -7,6 +11,7 @@
 //   mailbox         lead-inbox reports the Outlook (Graph) connection broken     CRITICAL
 //   jobs_failing    5+ background calls failed in 15 min (gateway, timeout, ok:false) CRITICAL
 //   cron:<job>      an active pg_cron job errored or is 3x its usual gap late     CRITICAL
+//   database        the signals RPC itself failed (two runs in a row)             CRITICAL
 //   probe:<name>    the intake API, inventory, CRM API or the site itself is down
 //                   (two runs in a row, so one blip never pages)                    CRITICAL
 //   ai_stuck        a ready lead still has no AI draft after 20 min                WARNING
@@ -145,8 +150,10 @@ Deno.serve(async (req: Request) => {
   const issues: Issue[] = [];
   const add = (key: string, severity: Severity, title: string, detail: string) => issues.push({ key, severity, title, detail });
 
+  // v1.1: counted with the probes (probe_fails.database) so one slow call never pages.
+  state.probe_fails.database = signalsRes.status === "rejected" ? (state.probe_fails.database || 0) + 1 : 0;
   if (signalsRes.status === "rejected") {
-    add("database", "critical", "Database check failed", String(signalsRes.reason?.message || signalsRes.reason).slice(0, 160));
+    if (state.probe_fails.database >= PROBE_FAILS_TO_ALERT) add("database", "critical", "Database check failed", String(signalsRes.reason?.message || signalsRes.reason).slice(0, 160));
   } else {
     const s = signalsRes.value as Json;
     const arr = (k: string) => (Array.isArray(s[k]) ? s[k] as Json[] : []);
@@ -197,7 +204,9 @@ Deno.serve(async (req: Request) => {
     const o = state.open[i.key];
     return !o || !o.last_alert || now.getTime() - Date.parse(o.last_alert) >= REALERT_MS[i.severity];
   });
-  const resolved = Object.keys(state.open).filter((k) => !current.has(k));
+  // v1.1: without signals, what they reported is unknown, not fixed; keep it open as it was.
+  const carried = signalsRes.status === "rejected" ? Object.keys(state.open).filter((k) => !k.startsWith("probe:") && k !== "database" && !current.has(k)) : [];
+  const resolved = Object.keys(state.open).filter((k) => !current.has(k) && !carried.includes(k));
 
   if (dryRun) {
     return json({ ok: true, dry_run: true, issues, would_alert: toAlert.map((i) => i.key), would_resolve: resolved, probes: probeSummary });
@@ -223,6 +232,7 @@ Deno.serve(async (req: Request) => {
     open[i.key] = { severity: i.severity, title: i.title, first_seen: prev?.first_seen || nowIso, last_alert: alertedNow ? nowIso : (prev?.last_alert || null) };
   }
   if (pushError) for (const k of resolved) open[k] = state.open[k]; // retry the resolved notice next run
+  for (const k of carried) open[k] = state.open[k];
   await saveState({ v: 1, open, probe_fails: state.probe_fails, last_run: nowIso, last_push_error: pushError || null, last_test: state.last_test });
   if (toAlert.length || resolved.length) {
     try {
@@ -244,5 +254,5 @@ Deno.serve(async (req: Request) => {
     } catch (_e) { /* healthchecks.io alerts on the missed ping anyway */ }
   }
 
-  return json({ ok: true, v: "1.0", open: issues.map((i) => ({ key: i.key, severity: i.severity })), alerted: toAlert.map((i) => i.key), resolved, pushed: toAlert.length > 0 && !pushError, push_error: pushError ? "push failed" : undefined, probes: probeSummary });
+  return json({ ok: true, v: "1.1", open: issues.map((i) => ({ key: i.key, severity: i.severity })), alerted: toAlert.map((i) => i.key), resolved, pushed: toAlert.length > 0 && !pushError, push_error: pushError ? "push failed" : undefined, probes: probeSummary });
 });

@@ -1,4 +1,8 @@
-// TBTFW — LEAD INTAKE — Edge Function v1.4 (Oct 15, 2026)
+// TBTFW — LEAD INTAKE — Edge Function v1.5 (Nov 4, 2026)
+// v1.5: DEDUPE matches a VIN only against earlier SELL leads. A buy lead's VIN is the
+//       stock car's, so two different buyers asking about the same car were marked
+//       duplicate (no push, no AI). Buyers now match on phone only. Junk leads never
+//       count as the original, so a real person the AI called junk is not hidden twice.
 // v1.4 (portal session two, three change classes):
 //   1. DEDUPE: a new lead whose VIN or phone matches a lead from the last 30 days
 //      (other than its own trade partner) is still created with a fresh ref and a
@@ -376,16 +380,17 @@ Deno.serve(async (req: Request) => {
   // v1.4: find a live lead from the last DEDUPE_DAYS with the same VIN or phone.
   // Excludes the caller's own trade partner (same trade_group_id) and prior
   // duplicates. An earlier sell lead counts only once its photos landed.
+  // v1.5: pass a VIN for sell leads only; it matches earlier sell leads only. Junk never matches.
   async function findDuplicate(vin: string | null, phone: string, tradeGroupId: string | null): Promise<{ lead: Json; matched: string } | null> {
     const since = new Date(Date.now() - DEDUPE_DAYS * 86400 * 1000).toISOString();
     const ors: string[] = ["phone.eq." + encodeURIComponent(phone)];
-    if (vin) ors.push("vin.eq." + encodeURIComponent(vin));
-    let q = "created_at=gte." + encodeURIComponent(since) + "&status=neq.duplicate&or=(" + ors.join(",") + ")&select=id,ref,kind,vin,phone,ready_at,trade_group_id&order=created_at.desc&limit=20";
+    if (vin) ors.push("and(kind.eq.sell,vin.eq." + encodeURIComponent(vin) + ")");
+    let q = "created_at=gte." + encodeURIComponent(since) + "&status=not.in.(duplicate,junk)&or=(" + ors.join(",") + ")&select=id,ref,kind,vin,phone,ready_at,trade_group_id&order=created_at.desc&limit=20";
     const rows = await sbSelect("leads", q);
     for (const r of rows) {
       if (tradeGroupId && r.trade_group_id && String(r.trade_group_id) === tradeGroupId) continue;
       if (r.kind === "sell" && !r.ready_at) continue;
-      const matched = (vin && r.vin === vin) ? "vin" : "phone";
+      const matched = (vin && r.kind === "sell" && r.vin === vin) ? "vin" : "phone";
       return { lead: r, matched };
     }
     return null;
@@ -393,7 +398,7 @@ Deno.serve(async (req: Request) => {
 
   // ---- GET /health ----------------------------------------------------------
   if (req.method === "GET" && path === "/health") {
-    return json({ ok: true, fn: "lead-intake", v: "1.4", turnstile: !!TURNSTILE_SECRET, at: new Date().toISOString() });
+    return json({ ok: true, fn: "lead-intake", v: "1.5", turnstile: !!TURNSTILE_SECRET, at: new Date().toISOString() });
   }
 
   // ---- GET /inventory -------------------------------------------------------
@@ -582,7 +587,7 @@ Deno.serve(async (req: Request) => {
     // v1.4: dedupe on VIN or phone within DEDUPE_DAYS (never blocks; marks).
     let dup: { lead: Json; matched: string } | null = null;
     try {
-      dup = await findDuplicate(kind === "sell" ? String(row.vin) : (row.vin ? String(row.vin) : null), phone, row.trade_group_id ? String(row.trade_group_id) : null);
+      dup = await findDuplicate(kind === "sell" ? String(row.vin) : null, phone, row.trade_group_id ? String(row.trade_group_id) : null);
       if (dup) row.status = "duplicate";
     } catch (_e) { dup = null; }
 

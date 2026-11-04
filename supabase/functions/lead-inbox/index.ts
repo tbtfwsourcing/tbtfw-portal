@@ -1,4 +1,12 @@
-// TBTFW — LEAD INBOX — Edge Function v1.0 (Oct 15, 2026, portal session three)
+// TBTFW — LEAD INBOX — Edge Function v1.1 (Nov 4, 2026)
+// v1.1: BOUNCES ARE NOT REPLIES. A non-delivery report ("Undeliverable: ...", "Delivery Status
+//       Notification (Failure)", "Failure Notice" ...) in a lead's thread used to land as the
+//       customer's reply: a priority-1 REPLY push and a reply draft addressed to the bounce
+//       mailbox. Now the email it bounced is marked failed ("bounced: <subject>") and Garett gets
+//       one normal-priority EMAIL BOUNCED push; nothing is stored as a reply. The status=sent
+//       guard makes it once only (the cursor re-reads its boundary message). Other mail from
+//       postmaster / mailer-daemon / MicrosoftExchange (delay notices and the like) is ignored.
+// v1.0 (Oct 15, 2026, portal session three):
 // Polls the portal mailbox (Microsoft Graph, delegated token from Vault via
 // RPC get_ms_refresh_token) for new inbox mail and lands seller replies as
 // lead_messages rows: direction 'in', channel 'email', purpose 'reply',
@@ -30,6 +38,10 @@ const GRAPH_SCOPES = "offline_access User.Read Mail.Send Mail.ReadWrite";
 const CURSOR_KEY = "ms_inbox_cursor";
 const MATCH_DAYS = 90;
 const PAGE = 50;
+// v1.1: what mail systems send back. Subjects are checked from the start, so a customer's
+// "Re: ..." never matches; a Gmail "(Delay)" notice is not a failure and is only ignored.
+const BOUNCE_SUBJECT = /^(undeliverable|undelivered mail|delivery status notification \(failure\)|delivery has failed|mail delivery failed|returned mail|failure notice|message not delivered)/i;
+const SYSTEM_FROM = /^(postmaster|mailer-daemon|microsoftexchange[0-9a-f]*)@/i;
 
 function json(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json" } });
@@ -69,12 +81,12 @@ Deno.serve(async (req: Request) => {
   const MS_MAILBOX = (Deno.env.get("MS_MAILBOX") || "").toLowerCase();
   const LEADS_URL = Deno.env.get("PORTAL_LEADS_URL") || "";
   if (!SUPABASE_URL || !SERVICE_KEY) return json({ ok: false, error: "platform env missing" }, 500);
-  if (!MS_TENANT || !MS_CLIENT_ID || !MS_CLIENT_SECRET || !MS_MAILBOX) return json({ ok: true, v: "1.0", skipped: "MS secrets missing" });
+  if (!MS_TENANT || !MS_CLIENT_ID || !MS_CLIENT_SECRET || !MS_MAILBOX) return json({ ok: true, v: "1.1", skipped: "MS secrets missing" });
 
   const REST = SUPABASE_URL + "/rest/v1";
   const SB: Record<string, string> = { apikey: SERVICE_KEY, Authorization: "Bearer " + SERVICE_KEY, "Content-Type": "application/json" };
   const body = await req.json().catch(() => ({})) as Json;
-  const report: Json = { v: "1.0", fetched: 0, matched: 0, stored: 0, duplicates: 0, ignored: 0, pushes: 0, errors: [] as string[] };
+  const report: Json = { v: "1.1", fetched: 0, matched: 0, stored: 0, duplicates: 0, ignored: 0, bounces: 0, pushes: 0, errors: [] as string[] };
   const errors = report.errors as string[];
 
   async function sbSelect(table: string, query: string): Promise<Json[]> {
@@ -107,7 +119,7 @@ Deno.serve(async (req: Request) => {
     }
     return token && user ? { token, user } : null;
   }
-  async function push(leadId: string, title: string, message: string, priority = 1): Promise<boolean> {
+  async function push(leadId: string, title: string, message: string, priority = 1, ev = "push_reply"): Promise<boolean> {
     try {
       const keys = await pushoverKeys();
       if (!keys) throw new Error("Pushover keys unavailable");
@@ -116,10 +128,10 @@ Deno.serve(async (req: Request) => {
       const r = await fetch("https://api.pushover.net/1/messages.json", { method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded" }, body: form.toString() });
       const d = await r.json();
       if (!r.ok || d.status !== 1) throw new Error("Pushover " + r.status + " " + JSON.stringify(d));
-      await event(leadId, "push_reply", { title, priority });
+      await event(leadId, ev, { title, priority });
       return true;
     } catch (e) {
-      await event(leadId, "push_failed", { error: String((e as Error).message || e), title, via: "push_reply" });
+      await event(leadId, "push_failed", { error: String((e as Error).message || e), title, via: ev });
       return false;
     }
   }
@@ -175,6 +187,33 @@ Deno.serve(async (req: Request) => {
     if (!from || from === MS_MAILBOX) { (report.ignored as number)++; continue; }
     const conv = String(m.conversationId || "");
     const imid = String(m.internetMessageId || m.id);
+    const subject = String(m.subject || "").trim();
+    // v1.1: a bounce marks the email it bounced as failed, once; it is never a customer reply.
+    if (BOUNCE_SUBJECT.test(subject)) {
+      try {
+        const hit = conv ? await sbSelect("lead_messages", "thread_id=eq." + encodeURIComponent(conv) + "&direction=eq.out&status=eq.sent&select=id,lead_id,to_address&order=sent_at.desc&limit=1") : [];
+        if (!hit.length) { (report.ignored as number)++; continue; }
+        const r = await fetch(REST + "/lead_messages?id=eq." + hit[0].id + "&status=eq.sent", {
+          method: "PATCH",
+          headers: { ...SB, Prefer: "return=representation" },
+          body: JSON.stringify({ status: "failed", error: ("bounced: " + subject).slice(0, 300), updated_at: new Date().toISOString() }),
+        });
+        if (!r.ok) throw new Error("bounce patch " + r.status + ": " + (await r.text()).slice(0, 200));
+        const changed = await r.json();
+        if (!Array.isArray(changed) || !changed.length) { (report.duplicates as number)++; continue; }
+        const leadId = String(hit[0].lead_id);
+        (report.bounces as number)++;
+        await event(leadId, "email_bounced", { message_id: hit[0].id, to: hit[0].to_address, from, subject: subject.slice(0, 200) });
+        const lead = (await sbSelect("leads", "id=eq." + leadId + "&select=ref,kind,year,make,model,trim,canon_model,canon_trim,mileage&limit=1"))[0] || {};
+        const title = "EMAIL BOUNCED // " + identityLine(lead) + (lead.kind === "sell" ? " // " + miles(lead.mileage) : "");
+        const msg = ["Our email to " + String(hit[0].to_address || "the customer") + " did not arrive. Call or text instead.", "Ref " + lead.ref].join("\n");
+        if (await push(leadId, title, msg, 0, "push_bounce")) (report.pushes as number)++;
+      } catch (e) {
+        errors.push(imid.slice(0, 40) + ": " + String((e as Error).message || e));
+      }
+      continue;
+    }
+    if (SYSTEM_FROM.test(from)) { (report.ignored as number)++; continue; }
     try {
       // (1) thread match
       let leadId = "";
