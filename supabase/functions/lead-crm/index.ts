@@ -1,5 +1,8 @@
-// TBTFW — LEAD CRM — Edge Function v1.5 (Oct 24, 2026, auto-email)
-// v1.5: AUTO-EMAILS. lead-enrich v1.6 stores an in-stock first answer as status
+// TBTFW — LEAD CRM — Edge Function v1.6 (Nov 4, 2026)
+// v1.6: setting a lead's stage to junk or lost skips its waiting drafts (and any queued
+//       auto-email), each logged as message_skipped with reason "stage junk|lost", so they
+//       leave the queue instead of sitting there for good. The response lists them in skipped.
+// v1.5 (Oct 24, 2026): AUTO-EMAILS. lead-enrich v1.6 stores an in-stock first answer as status
 //       'approved' with approved_at = when it goes out. /queue returns those
 //       beside the drafts (with status and approved_at) so the dashboard can
 //       show the countdown; POST /message/{id}/cancel turns one back into a
@@ -266,7 +269,7 @@ Deno.serve(async (req: Request) => {
       }
       const out = leads.map((l) => ({ ...l, messages: byLead[String(l.id)] || [] }));
       return json({
-        ok: true, v: "1.5", generated_at: new Date().toISOString(), stages: STAGES, actor,
+        ok: true, v: "1.6", generated_at: new Date().toISOString(), stages: STAGES, actor,
         channels: { email: graphOn || !!RESEND_API_KEY, email_via: graphOn ? "graph:" + MS_MAILBOX : (RESEND_API_KEY ? "resend" : null), sms: !!(TWILIO_SID && TWILIO_TOKEN && TWILIO_FROM), dm: false },
         drafts, leads: out,
       });
@@ -329,7 +332,22 @@ Deno.serve(async (req: Request) => {
         sbPatch("leads", "id=eq." + leadId, { status, updated_at: new Date().toISOString() }),
         event(leadId, "status", { status }),
       ]);
-      return json({ ok: true, lead_id: leadId, status });
+      // v1.6: junk or lost means nothing more goes to this lead, so its waiting drafts are skipped
+      // with it and leave the queue. A later message from the customer still gets a reply draft.
+      const skipped: string[] = [];
+      if (status === "junk" || status === "lost") {
+        const r = await fetch(REST + "/lead_messages?lead_id=eq." + leadId + "&direction=eq.out&status=in.(draft,approved)", {
+          method: "PATCH",
+          headers: { ...SB, Prefer: "return=representation" },
+          body: JSON.stringify({ status: "skipped", updated_at: new Date().toISOString() }),
+        });
+        if (!r.ok) throw new Error("lead_messages patch " + r.status + ": " + (await r.text()));
+        for (const m of await r.json() as Json[]) {
+          skipped.push(String(m.id));
+          await event(leadId, "message_skipped", { message_id: m.id, purpose: m.purpose, channel: m.channel, reason: "stage " + status });
+        }
+      }
+      return json({ ok: true, lead_id: leadId, status, skipped });
     } catch (e) {
       return fail(500, "write_failed", String((e as Error).message || e));
     }

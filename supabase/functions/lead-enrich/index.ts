@@ -1,5 +1,8 @@
-// TBTFW — LEAD ENRICH — Edge Function v1.7 (Oct 24, 2026; links moved to concierge.tbtfw.com Oct 27)
-// v1.7: NOTHING GOES TO THE CUSTOMER BY ITSELF; GARETT GETS THE LEAD BY EMAIL. Standing
+// TBTFW — LEAD ENRICH — Edge Function v1.8 (Nov 4, 2026)
+// v1.8: SWEEP E counts a skipped reply draft as answered. It used to read only sent, received
+//       and draft rows, so after a Skip the customer's message looked unanswered again and a
+//       new draft and REPLY DRAFT push followed within two minutes, every time, for 7 days.
+// v1.7 (Oct 24, 2026; links moved to concierge.tbtfw.com Oct 27): NOTHING GOES TO THE CUSTOMER BY ITSELF; GARETT GETS THE LEAD BY EMAIL. Standing
 //       decision (G, Oct 24 2026, replacing v1.6's auto-email): every lead is emailed to
 //       LEAD_EMAIL_TO (default MS_MAILBOX, garett@tbtfw.com) from the portal mailbox through
 //       Microsoft Graph, once, right after enrichment: a one-line summary, Text / Call / Email /
@@ -779,9 +782,9 @@ Deno.serve(async (req: Request) => {
   // v1.7 maintenance: {"lead_email_lead_id": "..."} emails one lead to Garett now ("force": true resends).
   if (isId(body.lead_email_lead_id) && !PREVIEW_ONLY) {
     try {
-      return json({ ok: true, v: "1.7", lead_email: await leadEmail(String(body.lead_email_lead_id).trim(), body.force === true) });
+      return json({ ok: true, v: "1.8", lead_email: await leadEmail(String(body.lead_email_lead_id).trim(), body.force === true) });
     } catch (e) {
-      return json({ ok: false, v: "1.7", error: String((e as Error).message || e) }, 502);
+      return json({ ok: false, v: "1.8", error: String((e as Error).message || e) }, 502);
     }
   }
 
@@ -842,7 +845,7 @@ Deno.serve(async (req: Request) => {
         return { id, error: String((e as Error).message || e), ms: Date.now() - t0 };
       }
     }));
-    return json({ ok: true, v: "1.7", previews: out });
+    return json({ ok: true, v: "1.8", previews: out });
   }
 
   // ---- SWEEP F (v1.6): send the auto-emails that are due --------------------
@@ -1020,10 +1023,16 @@ Deno.serve(async (req: Request) => {
         const id = String(L.id);
         const rp: Json = { ref: L.ref };
         try {
-          const msgs = await sbSelect("lead_messages", "lead_id=eq." + id + "&status=in.(sent,received,draft)&select=id,direction,purpose,status,channel,to_address,subject,body,sent_at,created_at&order=created_at.asc&limit=40");
-          if (msgs.some((m) => m.direction === "out" && m.status === "draft")) { rp.skip = "draft already waiting"; continue; }
-          const last = msgs.length ? msgs[msgs.length - 1] : null;
-          if (!last || last.direction !== "in") { rp.skip = "newest message is ours"; continue; }
+          // v1.8: a skipped reply answers the message it was drafted for (Garett chose not to send
+          // it), so it counts as ours here; without it each Skip drew a new draft and push.
+          // Skipped drafts never reach the AI's thread, which holds only what was really said.
+          // Newest 40, oldest first (ascending with a limit would drop the newest on a long thread).
+          const all = (await sbSelect("lead_messages", "lead_id=eq." + id + "&status=in.(sent,received,draft,skipped)&select=id,direction,purpose,status,channel,to_address,subject,body,sent_at,created_at&order=created_at.desc&limit=40")).reverse();
+          if (all.some((m) => m.direction === "out" && m.status === "draft")) { rp.skip = "draft already waiting"; continue; }
+          const newest = all.length ? all[all.length - 1] : null;
+          if (!newest || newest.direction !== "in") { rp.skip = newest?.status === "skipped" ? "reply skipped" : "newest message is ours"; continue; }
+          const msgs = all.filter((m) => m.status !== "skipped");
+          const last = msgs[msgs.length - 1];
           const { extra, rapid, channel } = replyContext(L, msgs);
           const d = await voiceDraft("reply", L, channel, extra);
           if (!d.body) throw new Error("empty reply draft");
@@ -1049,7 +1058,7 @@ Deno.serve(async (req: Request) => {
       }
     } catch (e) { errors.push("reply: " + String((e as Error).message || e)); }
   }
-  if (followOne || replyOne) { report.ms = Date.now() - startedAt; return json({ ok: true, v: "1.7", ...report }); }
+  if (followOne || replyOne) { report.ms = Date.now() - startedAt; return json({ ok: true, v: "1.8", ...report }); }
 
   // ---- ENRICHMENT ----------------------------------------------------------
   let leads: Json[] = [];
@@ -1265,5 +1274,5 @@ Deno.serve(async (req: Request) => {
   }
 
   report.ms = Date.now() - startedAt;
-  return json({ ok: true, v: "1.7", ...report });
+  return json({ ok: true, v: "1.8", ...report });
 });
