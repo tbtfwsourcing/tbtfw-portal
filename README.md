@@ -128,7 +128,7 @@ bot check break.
 
     ms-auth/            Microsoft sign-in for garett@tbtfw.com (v6)
     lead-intake/        intake API, dedupe (same phone; same VIN only between sellers), Turnstile, photo uploads (v1.5)
-    lead-enrich/        every 2 min: grading, drafts, follow-ups, replies; emails each lead to Garett (v1.8)
+    lead-enrich/        every 2 min: grading, drafts, follow-ups, replies; emails each lead to Garett, Cc LEAD_EMAIL_CC (v1.9)
     lead-crm/           backend for the CRM; Graph email send, Supabase Auth gate, auto-email cancel (v1.6)
     lead-inbox/         odd minutes: polls the Outlook inbox for replies; a bounce marks our email failed (v1.1)
     inventory-sync/     hourly mirror of tbtfw.com inventory (v1.1)
@@ -153,6 +153,9 @@ the submission, and the AI notes. Leads the AI has not finished, and repeat subm
 sweep after 10 minutes, so none is missed. Outlook strips `sms:` links, so Text goes through `static/text.html`,
 which reads the number and message from the URL fragment (never sent to a server) and opens Messages. Resend one
 lead's email: POST `{"lead_email_lead_id": "<uuid>", "force": true}` to lead-enrich.
+
+Anyone else who should get every lead email goes in the function secret `LEAD_EMAIL_CC` (comma-separated, Cc'd
+since v1.9). Keep addresses there, not in this repo, which is public.
 
 ## Sign-in email (auth-email)
 

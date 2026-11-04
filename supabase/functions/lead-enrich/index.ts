@@ -1,4 +1,7 @@
-// TBTFW — LEAD ENRICH — Edge Function v1.8 (Nov 4, 2026)
+// TBTFW — LEAD ENRICH — Edge Function v1.9 (Nov 4, 2026)
+// v1.9: the lead email also goes, as Cc, to every address in the LEAD_EMAIL_CC secret
+//       (comma-separated; a malformed entry is dropped so Garett's copy still goes out). The
+//       addresses live only in that secret, never in this public repo.
 // v1.8: SWEEP E counts a skipped reply draft as answered. It used to read only sent, received
 //       and draft rows, so after a Skip the customer's message looked unanswered again and a
 //       new draft and REPLY DRAFT push followed within two minutes, every time, for 7 days.
@@ -240,6 +243,8 @@ Deno.serve(async (req: Request) => {
   const MS_CLIENT_ID = Deno.env.get("MS_CLIENT_ID") || "";
   const MS_CLIENT_SECRET = Deno.env.get("MS_CLIENT_SECRET") || "";
   const LEAD_EMAIL_TO = (Deno.env.get("LEAD_EMAIL_TO") || Deno.env.get("MS_MAILBOX") || "").trim();
+  const LEAD_EMAIL_CC = (Deno.env.get("LEAD_EMAIL_CC") || "").split(",").map((s) => s.trim())
+    .filter((s) => /^[^\s@,;<>]+@[^\s@,;<>]+\.[a-z]{2,}$/i.test(s) && s.toLowerCase() !== LEAD_EMAIL_TO.toLowerCase());
   if (!SUPABASE_URL || !SERVICE_KEY) return json({ ok: false, error: "platform env missing" }, 500);
 
   const REST = SUPABASE_URL + "/rest/v1";
@@ -458,10 +463,10 @@ Deno.serve(async (req: Request) => {
     const r = await fetch("https://graph.microsoft.com/v1.0/me/sendMail", {
       method: "POST",
       headers: { Authorization: "Bearer " + token, "Content-Type": "application/json" },
-      body: JSON.stringify({ message: { subject, body: { contentType: "HTML", content: html }, toRecipients: [{ emailAddress: { address: LEAD_EMAIL_TO } }] }, saveToSentItems: false }),
+      body: JSON.stringify({ message: { subject, body: { contentType: "HTML", content: html }, toRecipients: [{ emailAddress: { address: LEAD_EMAIL_TO } }], ccRecipients: LEAD_EMAIL_CC.map((a) => ({ emailAddress: { address: a } })) }, saveToSentItems: false }),
     });
     if (r.status !== 202) throw new Error("Graph sendMail " + r.status + ": " + (await r.text()).slice(0, 200));
-    await event(leadId, "lead_emailed", { to: LEAD_EMAIL_TO, label: label || null, has_reply: !!reply, forced: force });
+    await event(leadId, "lead_emailed", { to: LEAD_EMAIL_TO, cc: LEAD_EMAIL_CC, label: label || null, has_reply: !!reply, forced: force });
     return "sent";
   }
   async function askModel(system: string, prompt: string, tools: unknown[], toolName: string, maxTokens = 16000, effort = "medium"): Promise<Json> {
@@ -782,9 +787,9 @@ Deno.serve(async (req: Request) => {
   // v1.7 maintenance: {"lead_email_lead_id": "..."} emails one lead to Garett now ("force": true resends).
   if (isId(body.lead_email_lead_id) && !PREVIEW_ONLY) {
     try {
-      return json({ ok: true, v: "1.8", lead_email: await leadEmail(String(body.lead_email_lead_id).trim(), body.force === true) });
+      return json({ ok: true, v: "1.9", lead_email: await leadEmail(String(body.lead_email_lead_id).trim(), body.force === true) });
     } catch (e) {
-      return json({ ok: false, v: "1.8", error: String((e as Error).message || e) }, 502);
+      return json({ ok: false, v: "1.9", error: String((e as Error).message || e) }, 502);
     }
   }
 
@@ -845,7 +850,7 @@ Deno.serve(async (req: Request) => {
         return { id, error: String((e as Error).message || e), ms: Date.now() - t0 };
       }
     }));
-    return json({ ok: true, v: "1.8", previews: out });
+    return json({ ok: true, v: "1.9", previews: out });
   }
 
   // ---- SWEEP F (v1.6): send the auto-emails that are due --------------------
@@ -1058,7 +1063,7 @@ Deno.serve(async (req: Request) => {
       }
     } catch (e) { errors.push("reply: " + String((e as Error).message || e)); }
   }
-  if (followOne || replyOne) { report.ms = Date.now() - startedAt; return json({ ok: true, v: "1.8", ...report }); }
+  if (followOne || replyOne) { report.ms = Date.now() - startedAt; return json({ ok: true, v: "1.9", ...report }); }
 
   // ---- ENRICHMENT ----------------------------------------------------------
   let leads: Json[] = [];
@@ -1274,5 +1279,5 @@ Deno.serve(async (req: Request) => {
   }
 
   report.ms = Date.now() - startedAt;
-  return json({ ok: true, v: "1.8", ...report });
+  return json({ ok: true, v: "1.9", ...report });
 });
